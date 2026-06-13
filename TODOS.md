@@ -11,11 +11,13 @@ Open questions:
 - Should the wrappers set the runtime UID and GID instead?
 - Why does the Copilot image require UID and GID `1001` while Codex works
   without an explicit value?
+- Should Gemini continue using UID and GID `1001` because its Node.js base
+  image already uses `1000`?
 
 Notes:
 
 - Any solution must continue to work with the named home volumes.
-- Fix and test the behavior for both Codex and Copilot.
+- Fix and test the behavior for Codex, Copilot, and Gemini.
 
 ### TODO: Fix Copilot project directory argument
 
@@ -45,3 +47,39 @@ Notes:
 
 - `set -euo pipefail` inside a sourced function persists after the function
   returns and may affect unrelated shell commands.
+
+### TODO: Support Gemini browser login without host networking
+
+Find an isolated way for Gemini CLI's localhost OAuth callback to reach the
+container.
+
+Open questions:
+
+- Can Gemini CLI use a fixed callback port that can be published only on
+  `127.0.0.1`?
+- Will Gemini CLI support a device-code or other headless login flow?
+
+Notes:
+
+- The current Gemini wrapper requires `GEMINI_API_KEY`.
+- Avoid using Docker host networking so the container remains isolated.
+
+### TODO: Standardize Docker wrapper calls
+
+Replace the duplicated tool-specific Docker commands with a shared wrapper
+that accepts tool-specific configuration.
+
+Open questions:
+
+- Where should image names, home volumes, container users, ports, environment
+  variables, and CLI arguments be defined?
+- How should Bash sourceable functions and Zsh autoload functions call the
+  shared implementation?
+- Can a new tool be added through configuration without creating another pair
+  of wrapper files?
+
+Notes:
+
+- Preserve the existing `codex`, `copilot`, and `gemini` shell commands.
+- Keep tool-specific exceptions explicit and easy to audit.
+- Avoid introducing a runtime dependency beyond the existing shell tooling.

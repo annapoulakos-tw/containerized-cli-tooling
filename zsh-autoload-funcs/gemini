@@ -1,0 +1,21 @@
+PROJECT="${1:-${PWD}}"
+PROJECT="$(cd "${PROJECT}" && pwd)"
+
+IMAGE="gemini-sandbox"
+HOME_VOLUME="gemini-home"
+
+docker run --rm -it \
+  --name "gemini-$(basename "${PROJECT}" | tr -cd '[:alnum:]-_')" \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --read-only \
+  --tmpfs /tmp \
+  --tmpfs /home/gemini/.cache:uid=1001,gid=1001,mode=700,exec \
+  --env GEMINI_API_KEY \
+  --env GOOGLE_CLOUD_PROJECT \
+  --env GOOGLE_CLOUD_LOCATION \
+  --env GOOGLE_GENAI_USE_VERTEXAI \
+  --mount type=bind,src="${PROJECT}",dst=/workspace \
+  --mount type=volume,src="${HOME_VOLUME}",dst=/home/gemini \
+  --workdir /workspace \
+  "${IMAGE}"

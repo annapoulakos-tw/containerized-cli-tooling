@@ -6,7 +6,7 @@ SHELL := /bin/bash
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-TOOLS := codex copilot
+TOOLS := codex copilot gemini
 TOOL ?=
 ZSH_FUNCTION_DIR ?= $(HOME)/.zfunc
 SOURCE_FUNCTION_DIR ?= $(HOME)/.local/share/containerized-cli-tooling
@@ -33,4 +33,4 @@ install-source: check-tool ## Install one sourceable Bash/Zsh function
 	install -m 0644 "shell-functions/$(TOOL).sh" "$(SOURCE_FUNCTION_DIR)/$(TOOL).sh"
 	@printf 'Installed %s\nAdd this to your shell startup file:\n  source "$(SOURCE_FUNCTION_DIR)/$(TOOL).sh"\n' "$(SOURCE_FUNCTION_DIR)/$(TOOL).sh"
 
-.PHONY: help check-tool build build-all build-codex build-copilot install-zsh install-source
+.PHONY: help check-tool build build-all install-zsh install-source

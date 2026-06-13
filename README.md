@@ -7,6 +7,7 @@ Supported tools:
 
 - OpenAI Codex
 - GitHub Copilot CLI
+- Google Gemini CLI
 
 ## Prerequisites
 
@@ -41,6 +42,7 @@ project directory as the wrapper's first argument when needed:
 ```sh
 codex /path/to/project
 copilot /path/to/project
+gemini /path/to/project
 ```
 
 ## Project-Scoped Customization
@@ -60,12 +62,19 @@ project/
 ├── .github/
 │   └── agents/
 │       └── copilot-agent.agent.md
-└── AGENTS.md
+├── .gemini/
+│   └── settings.json
+├── AGENTS.md
+└── GEMINI.md
 ```
 
 Both Codex and Copilot CLI discover project-scoped skills from
 `.agents/skills/` and instructions from `AGENTS.md`. A shared skill must follow
 the Agent Skills specification and can be used by either tool.
+
+Gemini CLI discovers project settings and commands from `.gemini/` and uses
+`GEMINI.md` as its default project instruction file. Gemini can be configured
+to use `AGENTS.md` through `.gemini/settings.json`.
 
 Custom agents are tool-specific:
 
@@ -78,6 +87,27 @@ mounted at `/workspace`.
 Files elsewhere on the host, including user-level skills and agents, are not
 mounted into the container. Add reusable customization files to each project
 before launching the relevant tool.
+
+## Gemini Authentication
+
+Gemini CLI browser-based Google login does not currently work with this
+container setup because its localhost OAuth callback cannot reach the
+container. Use a Gemini API key instead:
+
+```sh
+export GEMINI_API_KEY="<your-api-key>"
+gemini
+```
+
+The wrapper passes through these Gemini API and Vertex AI environment variables
+when they are set on the host:
+
+- `GEMINI_API_KEY`
+- `GOOGLE_CLOUD_PROJECT`
+- `GOOGLE_CLOUD_LOCATION`
+- `GOOGLE_GENAI_USE_VERTEXAI`
+
+User configuration is stored in the persistent `gemini-home` volume.
 
 ## Zsh Autoload Functions
 
@@ -118,6 +148,7 @@ Add that line to the relevant shell startup file to load it automatically.
 ```sh
 make build TOOL=codex
 make build TOOL=copilot
+make build TOOL=gemini
 make build-all
 make help
 ```
@@ -144,8 +175,8 @@ it. The container also retains network access. Treat the current directory,
 the tool-specific Docker volume, and any data reachable over the network as
 accessible to the CLI.
 
-Named volumes are `codex-home` and `copilot-home`. Remove one to clear the
-corresponding tool's persisted credentials and settings:
+Named volumes are `codex-home`, `copilot-home`, and `gemini-home`. Remove one
+to clear the corresponding tool's persisted credentials and settings:
 
 ```sh
 docker volume rm codex-home
@@ -159,3 +190,7 @@ docker volume rm codex-home
 - [GitHub Copilot CLI: Adding agent skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills)
 - [GitHub Copilot CLI: Creating and using custom agents](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli)
 - [GitHub Copilot CLI: Adding custom instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions)
+- [Google Gemini CLI: Installation](https://geminicli.com/docs/get-started/installation/)
+- [Google Gemini CLI: Authentication](https://geminicli.com/docs/get-started/authentication/)
+- [Google Gemini CLI: Configuration](https://geminicli.com/docs/reference/configuration/)
+- [Google Gemini CLI: GEMINI.md files](https://geminicli.com/docs/cli/gemini-md/)

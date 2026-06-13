@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+LICENSE
+Makefile
+*-build.sh
+shell-functions
+zsh-autoload-funcs

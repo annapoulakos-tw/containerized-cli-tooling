@@ -1,0 +1,21 @@
+set -euo pipefail
+
+PROJECT="${1:-${PWD}}"
+PROJECT="$(cd "${PROJECT}" && pwd)"
+
+IMAGE="codex-sandbox"
+HOME_VOLUME="codex-home"
+
+docker run --rm -it \
+    --name "codex-$(basename "${PROJECT}" | tr -cd '[:alnum:]-_')" \
+    -p 127.0.0.1:1455:1455 \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --read-only \
+    --tmpfs /tmp \
+    --tmpfs /home/codex/.cache \
+    --mount type=bind,src="${PROJECT}",dst=/workspace \
+    --mount type=volume,src="${HOME_VOLUME}",dst=/home/codex \
+    --workdir /workspace \
+    "${IMAGE}" \
+    codex --sandbox danger-full-access

@@ -3,6 +3,14 @@ PROJECT="$(cd "${PROJECT}" && pwd)"
 
 IMAGE="gemini-sandbox"
 HOME_VOLUME="gemini-home"
+CUSTOMIZATION_MOUNTS=()
+
+[[ -d "${HOME}/.agents/skills" ]] &&
+  CUSTOMIZATION_MOUNTS+=(--mount "type=bind,src=${HOME}/.agents/skills,dst=/home/gemini/.agents/skills,readonly")
+[[ -d "${HOME}/.gemini/skills" ]] &&
+  CUSTOMIZATION_MOUNTS+=(--mount "type=bind,src=${HOME}/.gemini/skills,dst=/home/gemini/.gemini/skills,readonly")
+[[ -d "${HOME}/.gemini/agents" ]] &&
+  CUSTOMIZATION_MOUNTS+=(--mount "type=bind,src=${HOME}/.gemini/agents,dst=/home/gemini/.gemini/agents,readonly")
 
 docker run --rm -it \
   --name "gemini-$(basename "${PROJECT}" | tr -cd '[:alnum:]-_')" \
@@ -17,5 +25,6 @@ docker run --rm -it \
   --env GOOGLE_GENAI_USE_VERTEXAI \
   --mount type=bind,src="${PROJECT}",dst=/workspace \
   --mount type=volume,src="${HOME_VOLUME}",dst=/home/gemini \
+  "${CUSTOMIZATION_MOUNTS[@]}" \
   --workdir /workspace \
   "${IMAGE}"

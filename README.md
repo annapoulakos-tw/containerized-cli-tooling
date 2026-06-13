@@ -85,8 +85,42 @@ These files are available automatically because the project directory is
 mounted at `/workspace`.
 
 Files elsewhere on the host, including user-level skills and agents, are not
-mounted into the container. Add reusable customization files to each project
-before launching the relevant tool.
+mounted into the container unless they are in one of the supported personal
+customization directories.
+
+## Personal Customization
+
+The wrappers conditionally mount supported personal skills and agents from the
+host into each container. A directory is mounted only when it exists, and all
+personal customization mounts are read-only.
+
+Shared skills using the Agent Skills standard can be placed here:
+
+```text
+~/.agents/skills/
+```
+
+Tool-specific personal customization paths are:
+
+```text
+~/.codex/agents/
+~/.copilot/agents/
+~/.copilot/skills/
+~/.gemini/agents/
+~/.gemini/skills/
+```
+
+For example, a personal Copilot agent at
+`~/.copilot/agents/lazy-senior-developer.agent.md` is available to Copilot in
+every mounted project without being committed to that project.
+
+The wrappers do not mount the complete `~/.codex`, `~/.copilot`, or
+`~/.gemini` directories from the host. Credentials, sessions, configuration,
+and other container state remain in the tool-specific named Docker volumes.
+
+Read-only mounts prevent the containers from changing personal customization
+files, but the tools can still read their contents. Do not store secrets in
+skills, agent definitions, or their supporting files.
 
 ## Gemini Authentication
 

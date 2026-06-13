@@ -43,6 +43,42 @@ codex /path/to/project
 copilot /path/to/project
 ```
 
+## Project-Scoped Customization
+
+Skills, custom agents, and instructions must be present inside the project
+directory you run the wrapper from:
+
+```text
+project/
+├── .agents/
+│   └── skills/
+│       └── example-skill/
+│           └── SKILL.md
+├── .codex/
+│   └── agents/
+│       └── codex-agent.toml
+├── .github/
+│   └── agents/
+│       └── copilot-agent.agent.md
+└── AGENTS.md
+```
+
+Both Codex and Copilot CLI discover project-scoped skills from
+`.agents/skills/` and instructions from `AGENTS.md`. A shared skill must follow
+the Agent Skills specification and can be used by either tool.
+
+Custom agents are tool-specific:
+
+- Codex discovers TOML agent files from `.codex/agents/`.
+- Copilot CLI discovers Markdown agent profiles from `.github/agents/`.
+
+These files are available automatically because the project directory is
+mounted at `/workspace`.
+
+Files elsewhere on the host, including user-level skills and agents, are not
+mounted into the container. Add reusable customization files to each project
+before launching the relevant tool.
+
 ## Zsh Autoload Functions
 
 Zsh users can install a function into `~/.zfunc` instead:
@@ -114,3 +150,12 @@ corresponding tool's persisted credentials and settings:
 ```sh
 docker volume rm codex-home
 ```
+
+## Bibliography
+
+- [OpenAI Codex: Agent Skills](https://developers.openai.com/codex/skills)
+- [OpenAI Codex: Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md)
+- [OpenAI Codex: Subagents](https://developers.openai.com/codex/subagents)
+- [GitHub Copilot CLI: Adding agent skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills)
+- [GitHub Copilot CLI: Creating and using custom agents](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli)
+- [GitHub Copilot CLI: Adding custom instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions)

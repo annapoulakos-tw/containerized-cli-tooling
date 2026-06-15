@@ -1,0 +1,82 @@
+emulate -L zsh
+
+local tool="${1:-}"
+local project="${2:-${PWD}}"
+
+if [[ "${#}" -gt 2 || -z "${tool}" ]]; then
+  printf '%s\n' "Usage: ai-cli <codex|copilot|gemini> [project]" >&2
+  return 2
+fi
+
+project="$(cd "${project}" && pwd)" || return
+
+local image="${tool}-sandbox"
+local container_home="/home/${tool}"
+local home_volume="${tool}-home"
+local project_name
+project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
+
+local cache_tmpfs="${container_home}/.cache"
+local -a customization_directories=(agents)
+local -a docker_arguments=(
+  --rm
+  -it
+  --name "${tool}-${project_name}"
+  --cap-drop ALL
+  --security-opt no-new-privileges
+  --read-only
+  --tmpfs /tmp
+)
+local -a command=()
+
+case "${tool}" in
+  codex)
+    docker_arguments+=(-p 127.0.0.1:1455:1455)
+    command=(codex --sandbox danger-full-access)
+    ;;
+  copilot|gemini)
+    cache_tmpfs="${cache_tmpfs}:uid=1001,gid=1001,mode=700,exec"
+    customization_directories=(skills agents)
+    if [[ "${tool}" == "gemini" ]]; then
+      docker_arguments+=(
+        --env GEMINI_API_KEY
+        --env GOOGLE_CLOUD_PROJECT
+        --env GOOGLE_CLOUD_LOCATION
+        --env GOOGLE_GENAI_USE_VERTEXAI
+      )
+    fi
+    ;;
+  *)
+    printf '%s\n' "Unsupported tool: ${tool}" >&2
+    return 2
+    ;;
+esac
+
+docker_arguments+=(--tmpfs "${cache_tmpfs}")
+docker_arguments+=(
+  --mount "type=bind,src=${project},dst=/workspace"
+  --mount "type=volume,src=${home_volume},dst=${container_home}"
+)
+
+local customization_directory
+local source_directory
+
+source_directory="${HOME}/.agents/skills"
+if [[ -d "${source_directory}" ]]; then
+  docker_arguments+=(
+    --mount "type=bind,src=${source_directory},dst=${container_home}/.agents/skills,readonly"
+  )
+fi
+
+for customization_directory in "${customization_directories[@]}"; do
+  source_directory="${HOME}/.${tool}/${customization_directory}"
+  if [[ -d "${source_directory}" ]]; then
+    docker_arguments+=(
+      --mount "type=bind,src=${source_directory},dst=${container_home}/.${tool}/${customization_directory},readonly"
+    )
+  fi
+done
+
+docker_arguments+=(--workdir /workspace)
+
+docker run "${docker_arguments[@]}" "${image}" "${command[@]}"

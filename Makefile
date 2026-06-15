@@ -18,7 +18,7 @@ check-tool:
 	@case " $(TOOLS) " in *" $(TOOL) "*) ;; *) printf 'Set TOOL to one of: $(TOOLS)\nExample: make build TOOL=codex\n' >&2; exit 2 ;; esac
 
 build: check-tool ## Build one image: make build TOOL=codex
-	./$(TOOL)-build.sh
+	@docker build --file "./dockerfiles/$(TOOL).Dockerfile" --tag $(TOOL)-sandbox .
 
 build-all: ## Build every supported image
 	@for tool in $(TOOLS); do ./"$${tool}-build.sh"; done

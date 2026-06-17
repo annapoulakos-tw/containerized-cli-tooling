@@ -8,6 +8,7 @@ Supported tools:
 - OpenAI Codex
 - GitHub Copilot CLI
 - Google Gemini CLI
+- Atlassian Rovo Dev CLI
 
 ## Prerequisites
 
@@ -108,15 +109,17 @@ Tool-specific personal customization paths are:
 ~/.copilot/skills/
 ~/.gemini/agents/
 ~/.gemini/skills/
+~/.rovodev/skills/
 ```
 
 For example, a personal Copilot agent at
 `~/.copilot/agents/lazy-senior-developer.agent.md` is available to Copilot in
 every mounted project without being committed to that project.
 
-The wrappers do not mount the complete `~/.codex`, `~/.copilot`, or
-`~/.gemini` directories from the host. Credentials, sessions, configuration,
-and other container state remain in the tool-specific named Docker volumes.
+The wrappers do not mount the complete `~/.codex`, `~/.copilot`, `~/.gemini`,
+or `~/.rovodev` directories from the host. Credentials, sessions,
+configuration, and other container state remain in the tool-specific named
+Docker volumes.
 
 Read-only mounts prevent the containers from changing personal customization
 files, but the tools can still read their contents. Do not store secrets in
@@ -142,6 +145,64 @@ when they are set on the host:
 - `GOOGLE_GENAI_USE_VERTEXAI`
 
 User configuration is stored in the persistent `gemini-home` volume.
+
+## Rovo Authentication
+
+Rovo Dev CLI is provided by Atlassian as an Atlassian CLI extension. The
+container installs `acli` and exposes `rovo` inside the image as a command that
+delegates to `acli rovodev`. The default container command is:
+
+```sh
+rovo run
+```
+
+Authentication is still Atlassian-managed. To bootstrap auth through the
+agnostic wrapper, export your Atlassian site, email, and scoped Rovo Dev API
+token before starting Rovo:
+
+```sh
+export ROVO_SITE="your-site.atlassian.net"
+export ROVO_EMAIL="you@example.com"
+export ROVO_DEV_API_TOKEN="<token>"
+
+ai-cli rovo .
+```
+
+When all three variables are set, the container runs `rovo auth login` with the
+token, then starts `rovo run`. Auth state persists in the `rovo-home` Docker
+volume, so the token does not need to be exported after the first successful
+login. Unset `ROVO_DEV_API_TOKEN` after authentication to avoid passing it into
+future containers.
+
+The equivalent command inside the container is:
+
+```sh
+printf '%s' "$ROVO_DEV_API_TOKEN" | rovo auth login --site "$ROVO_SITE" --email "$ROVO_EMAIL" --token && rovo run
+```
+
+Atlassian documents that Rovo Dev CLI requires an activated Rovo Dev site, an
+allocation of Rovo Dev credits, and a paid Rovo Dev Standard subscription.
+It is not available during a Rovo Dev Standard trial.
+
+The `rovo` image can be built with Make:
+
+```sh
+make build TOOL=rovo
+```
+
+This repository currently provides `rovo.Dockerfile` for the agnostic wrapper
+path, so `ai-cli rovo` starts Rovo Dev in the mounted project. Dedicated
+`shell-functions/rovo.sh` and `zsh-autoload-funcs/rovo` wrappers have not been
+added, so `make install-source TOOL=rovo` and `make install-zsh TOOL=rovo`
+will report that no per-tool shell function exists.
+
+Rovo Dev stores user configuration at `~/.rovodev/config.yml`. The agnostic
+wrapper mounts `/home/rovo` from the persistent `rovo-home` volume, so Rovo
+configuration, sessions, MCP config, and Atlassian auth state persist there.
+Project skills can live in `.rovodev/skills/` or `.agents/skills/` inside the
+mounted project. User skills can live in `~/.rovodev/skills/` or
+`~/.agents/skills/` on the host; those directories are mounted read-only when
+they exist.
 
 ## Zsh Autoload Functions
 
@@ -183,15 +244,17 @@ Add that line to the relevant shell startup file to load it automatically.
 make build TOOL=codex
 make build TOOL=copilot
 make build TOOL=gemini
+make build TOOL=rovo
 make build-all
 make help
 ```
 
-The standalone build scripts also work from any directory and pass additional
-arguments to `docker build`:
+The Make targets build images from `dockerfiles/<tool>.Dockerfile` and tag
+them as `<tool>-sandbox`. To pass additional arguments to `docker build`, run
+Docker directly:
 
 ```sh
-/path/to/containerized-cli-tooling/codex-build.sh --no-cache
+docker build --file ./dockerfiles/rovo.Dockerfile --tag rovo-sandbox --no-cache .
 ```
 
 ## Security Model
@@ -209,8 +272,9 @@ it. The container also retains network access. Treat the current directory,
 the tool-specific Docker volume, and any data reachable over the network as
 accessible to the CLI.
 
-Named volumes are `codex-home`, `copilot-home`, and `gemini-home`. Remove one
-to clear the corresponding tool's persisted credentials and settings:
+Named volumes are `codex-home`, `copilot-home`, `gemini-home`, and
+`rovo-home`. Remove one to clear the corresponding tool's persisted
+credentials and settings:
 
 ```sh
 docker volume rm codex-home
@@ -228,3 +292,8 @@ docker volume rm codex-home
 - [Google Gemini CLI: Authentication](https://geminicli.com/docs/get-started/authentication/)
 - [Google Gemini CLI: Configuration](https://geminicli.com/docs/reference/configuration/)
 - [Google Gemini CLI: GEMINI.md files](https://geminicli.com/docs/cli/gemini-md/)
+- [Atlassian Rovo: Use Rovo Dev CLI](https://support.atlassian.com/rovo/docs/use-rovo-dev-cli/)
+- [Atlassian Rovo: Install and run Rovo Dev CLI on your device](https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/)
+- [Atlassian Rovo: Manage Rovo Dev CLI settings](https://support.atlassian.com/rovo/docs/manage-rovo-dev-cli-settings/)
+- [Atlassian Rovo: Extend Rovo Dev CLI with Agent Skills](https://support.atlassian.com/rovo/docs/extend-rovo-dev-cli-with-agent-skills/)
+- [Atlassian CLI: Install on Linux](https://developer.atlassian.com/cloud/acli/guides/install-linux/)

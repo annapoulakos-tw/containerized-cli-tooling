@@ -7,7 +7,7 @@ ai-cli () {
     local project="${2:-${PWD}}"
 
     if [[ "${#}" -gt 2 || -z "${tool}" ]]; then
-    printf '%s\n' "Usage: ai-cli <codex|copilot|gemini> [project]" >&2
+    printf '%s\n' "Usage: ai-cli <codex|copilot|gemini|rovo> [project]" >&2
     return 2
     fi
 
@@ -20,6 +20,7 @@ ai-cli () {
     project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
 
     local cache_tmpfs="${container_home}/.cache"
+    local customization_base="${tool}"
     local -a customization_directories=(agents)
     local -a docker_arguments=(
     --rm
@@ -49,6 +50,15 @@ ai-cli () {
         )
         fi
         ;;
+    rovo)
+        customization_base="rovodev"
+        customization_directories=(skills)
+        docker_arguments+=(
+            --env ROVO_SITE
+            --env ROVO_EMAIL
+            --env ROVO_DEV_API_TOKEN
+        )
+        ;;
     *)
         printf '%s\n' "Unsupported tool: ${tool}" >&2
         return 2
@@ -72,10 +82,10 @@ ai-cli () {
     fi
 
     for customization_directory in "${customization_directories[@]}"; do
-    source_directory="${HOME}/.${tool}/${customization_directory}"
+    source_directory="${HOME}/.${customization_base}/${customization_directory}"
     if [[ -d "${source_directory}" ]]; then
         docker_arguments+=(
-        --mount "type=bind,src=${source_directory},dst=${container_home}/.${tool}/${customization_directory},readonly"
+        --mount "type=bind,src=${source_directory},dst=${container_home}/.${customization_base}/${customization_directory},readonly"
         )
     fi
     done

@@ -31,7 +31,7 @@ RUN printf '%s\n' \
   '    exit 2' \
   '  fi' \
   '' \
-  '  printf "%s" "${ROVO_DEV_API_TOKEN}" | rovo auth login --site "${ROVO_SITE}" --email "${ROVO_EMAIL}" --token' \
+  '  printf "%s" "${ROVO_DEV_API_TOKEN}" | rovo auth login --email "${ROVO_EMAIL}" --token' \
   'fi' \
   '' \
   'exec rovo run' \

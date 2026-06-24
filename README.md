@@ -125,9 +125,19 @@ Read-only mounts prevent the containers from changing personal customization
 files, but the tools can still read their contents. Do not store secrets in
 skills, agent definitions, or their supporting files.
 
-## Agent Harness Mounts
+## Agent Harness
 
-If `${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}` contains `build.sh`, the
+To run the Agent Harness in your cli session, use the following snippet:
+
+```
+Read /home/{TOOL}/.{TOOL}/agent-harness/AGENTS.md.
+Use /home/{TOOL}/.{TOOL}/agent-harness as the harness root.
+Acknowledge loaded and wait.
+```
+
+Where `{TOOL}` is the name of the tool you are using, i.e. `codex` or `copilot`.
+
+If `${AI_HARNESS_ROOT:-$HOME/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}` contains `build.sh`, the
 wrappers refresh the tool-specific harness build before starting the container.
 When the generated build exists, it is mounted read-only at the tool's stable
 harness path:

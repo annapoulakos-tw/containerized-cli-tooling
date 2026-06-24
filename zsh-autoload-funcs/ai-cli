@@ -17,8 +17,11 @@ local project_name
 project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
 
 local cache_tmpfs="${container_home}/.cache"
+local harness_root="${AI_HARNESS_ROOT:-${HOME}/code/agentic-harness}"
+local harness_build="${harness_root}/build/${tool}"
 local customization_base="${tool}"
 local -a customization_directories=(agents)
+local -a post_home_mounts=()
 local -a docker_arguments=(
   --rm
   -it
@@ -48,13 +51,14 @@ case "${tool}" in
     fi
     ;;
   rovo)
+    cache_tmpfs=""
     customization_base="rovodev"
     customization_directories=(skills)
     docker_arguments+=(
-      --env ROVO_SITE
       --env ROVO_EMAIL
       --env ROVO_DEV_API_TOKEN
     )
+    post_home_mounts+=(--mount "type=volume,src=rovo-cache,dst=${container_home}/.cache")
     ;;
   *)
     printf '%s\n' "Unsupported tool: ${tool}" >&2
@@ -62,11 +66,14 @@ case "${tool}" in
     ;;
 esac
 
-docker_arguments+=(--tmpfs "${cache_tmpfs}")
+if [[ -n "${cache_tmpfs}" ]]; then
+  docker_arguments+=(--tmpfs "${cache_tmpfs}")
+fi
 docker_arguments+=(
   --mount "type=bind,src=${project},dst=/workspace"
   --mount "type=volume,src=${home_volume},dst=${container_home}"
 )
+docker_arguments+=("${post_home_mounts[@]}")
 
 local customization_directory
 local source_directory
@@ -86,6 +93,16 @@ for customization_directory in "${customization_directories[@]}"; do
     )
   fi
 done
+
+if [[ -x "${harness_root}/build.sh" ]]; then
+  "${harness_root}/build.sh" "${tool}" || return
+fi
+
+if [[ -d "${harness_build}" ]]; then
+  docker_arguments+=(
+    --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
+  )
+fi
 
 docker_arguments+=(--workdir /workspace)
 

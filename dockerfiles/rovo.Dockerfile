@@ -25,9 +25,9 @@ RUN printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -euo pipefail' \
   '' \
-  'if [[ -n "${ROVO_DEV_API_TOKEN:-}" || -n "${ROVO_SITE:-}" || -n "${ROVO_EMAIL:-}" ]]; then' \
-  '  if [[ -z "${ROVO_DEV_API_TOKEN:-}" || -z "${ROVO_SITE:-}" || -z "${ROVO_EMAIL:-}" ]]; then' \
-  '    printf "%s\n" "Set ROVO_SITE, ROVO_EMAIL, and ROVO_DEV_API_TOKEN to bootstrap Rovo auth." >&2' \
+  'if [[ -n "${ROVO_DEV_API_TOKEN:-}" || -n "${ROVO_EMAIL:-}" ]]; then' \
+  '  if [[ -z "${ROVO_DEV_API_TOKEN:-}" || -z "${ROVO_EMAIL:-}" ]]; then' \
+  '    printf "%s\n" "Set ROVO_EMAIL and ROVO_DEV_API_TOKEN to bootstrap Rovo auth." >&2' \
   '    exit 2' \
   '  fi' \
   '' \

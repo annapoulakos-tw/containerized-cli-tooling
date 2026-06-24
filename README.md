@@ -125,6 +125,37 @@ Read-only mounts prevent the containers from changing personal customization
 files, but the tools can still read their contents. Do not store secrets in
 skills, agent definitions, or their supporting files.
 
+## Agent Harness Mounts
+
+If `${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}` contains `build.sh`, the
+wrappers refresh the tool-specific harness build before starting the container.
+When the generated build exists, it is mounted read-only at the tool's stable
+harness path:
+
+```text
+/home/codex/.codex/agent-harness
+/home/copilot/.copilot/agent-harness
+```
+
+The harness mount is separate from `/workspace`, so it does not overwrite
+project-owned files such as `/workspace/AGENTS.md`.
+
+To verify the Copilot image can read the mounted harness after starting through
+the wrapper, run this from inside that container:
+
+```sh
+test -r /home/copilot/.copilot/agent-harness/AGENTS.md
+```
+
+To inspect the same mount with Docker directly, point the bind source at the
+generated Copilot harness build:
+
+```sh
+docker run --rm --entrypoint sh \
+  --mount "type=bind,src=${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}/build/copilot,dst=/home/copilot/.copilot/agent-harness,readonly" \
+  copilot-sandbox -lc 'test -r /home/copilot/.copilot/agent-harness/AGENTS.md'
+```
+
 ## Gemini Authentication
 
 Gemini CLI browser-based Google login does not currently work with this
@@ -157,18 +188,17 @@ rovo run
 ```
 
 Authentication is still Atlassian-managed. To bootstrap auth through the
-agnostic wrapper, export your Atlassian site, email, and scoped Rovo Dev API
-token before starting Rovo:
+agnostic wrapper, export your Atlassian email and scoped Rovo Dev API token
+before starting Rovo:
 
 ```sh
-export ROVO_SITE="your-site.atlassian.net"
 export ROVO_EMAIL="you@example.com"
 export ROVO_DEV_API_TOKEN="<token>"
 
 ai-cli rovo .
 ```
 
-When all three variables are set, the container runs `rovo auth login` with the
+When both variables are set, the container runs `rovo auth login` with the
 token, then starts `rovo run`. Auth state persists in the `rovo-home` Docker
 volume, so the token does not need to be exported after the first successful
 login. Unset `ROVO_DEV_API_TOKEN` after authentication to avoid passing it into
@@ -177,7 +207,7 @@ future containers.
 The equivalent command inside the container is:
 
 ```sh
-printf '%s' "$ROVO_DEV_API_TOKEN" | rovo auth login --site "$ROVO_SITE" --email "$ROVO_EMAIL" --token && rovo run
+printf '%s' "$ROVO_DEV_API_TOKEN" | rovo auth login --email "$ROVO_EMAIL" --token && rovo run
 ```
 
 Atlassian documents that Rovo Dev CLI requires an activated Rovo Dev site, an
@@ -199,6 +229,9 @@ will report that no per-tool shell function exists.
 Rovo Dev stores user configuration at `~/.rovodev/config.yml`. The agnostic
 wrapper mounts `/home/rovo` from the persistent `rovo-home` volume, so Rovo
 configuration, sessions, MCP config, and Atlassian auth state persist there.
+Rovo also writes and downloads runtime files under `~/.cache`, so the wrapper
+mounts `/home/rovo/.cache` from a separate persistent `rovo-cache` Docker
+volume.
 Project skills can live in `.rovodev/skills/` or `.agents/skills/` inside the
 mounted project. User skills can live in `~/.rovodev/skills/` or
 `~/.agents/skills/` on the host; those directories are mounted read-only when
@@ -272,9 +305,10 @@ it. The container also retains network access. Treat the current directory,
 the tool-specific Docker volume, and any data reachable over the network as
 accessible to the CLI.
 
-Named volumes are `codex-home`, `copilot-home`, `gemini-home`, and
-`rovo-home`. Remove one to clear the corresponding tool's persisted
-credentials and settings:
+Named home volumes are `codex-home`, `copilot-home`, `gemini-home`, and
+`rovo-home`. Rovo also uses `rovo-cache` for downloaded runtime files. Remove
+one to clear the corresponding tool's persisted credentials, settings, or
+cache:
 
 ```sh
 docker volume rm codex-home

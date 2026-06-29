@@ -25,20 +25,20 @@ build-all: ## Build every supported image
 		docker build --file "./dockerfiles/$${tool}.Dockerfile" --tag "$${tool}-sandbox" .; \
 	done
 
-check-source-function: check-tool
-	@test -f "shell-functions/$(TOOL).sh" || { printf 'No sourceable shell function exists for TOOL=%s\n' "$(TOOL)" >&2; exit 2; }
+check-source-function:
+	@test -f "shell-functions/ai-cli.sh" || { printf 'No sourceable shell function exists for ai-cli\n' >&2; exit 2; }
 
-check-zsh-function: check-tool
-	@test -f "zsh-autoload-funcs/$(TOOL)" || { printf 'No Zsh autoload function exists for TOOL=%s\n' "$(TOOL)" >&2; exit 2; }
+check-zsh-function:
+	@test -f "zsh-autoload-funcs/ai-cli" || { printf 'No Zsh autoload function exists for ai-cli\n' >&2; exit 2; }
 
-install-zsh: check-zsh-function ## Install one Zsh autoload function
+install-zsh: check-zsh-function ## Install the ai-cli Zsh autoload function
 	install -d "$(ZSH_FUNCTION_DIR)"
-	install -m 0644 "zsh-autoload-funcs/$(TOOL)" "$(ZSH_FUNCTION_DIR)/$(TOOL)"
-	@printf 'Installed %s\nAdd this to ~/.zshrc if needed:\n  fpath=("$(ZSH_FUNCTION_DIR)" $$fpath)\n  autoload -Uz $(TOOL)\n' "$(ZSH_FUNCTION_DIR)/$(TOOL)"
+	install -m 0644 "zsh-autoload-funcs/ai-cli" "$(ZSH_FUNCTION_DIR)/ai-cli"
+	@printf 'Installed %s\nAdd this to ~/.zshrc if needed:\n  fpath=("$(ZSH_FUNCTION_DIR)" $$fpath)\n  autoload -Uz ai-cli\n' "$(ZSH_FUNCTION_DIR)/ai-cli"
 
-install-source: check-source-function ## Install one sourceable Bash/Zsh function
+install-source: check-source-function ## Install the sourceable ai-cli Bash/Zsh function
 	install -d "$(SOURCE_FUNCTION_DIR)"
-	install -m 0644 "shell-functions/$(TOOL).sh" "$(SOURCE_FUNCTION_DIR)/$(TOOL).sh"
-	@printf 'Installed %s\nAdd this to your shell startup file:\n  source "$(SOURCE_FUNCTION_DIR)/$(TOOL).sh"\n' "$(SOURCE_FUNCTION_DIR)/$(TOOL).sh"
+	install -m 0644 "shell-functions/ai-cli.sh" "$(SOURCE_FUNCTION_DIR)/ai-cli.sh"
+	@printf 'Installed %s\nAdd this to your shell startup file:\n  source "$(SOURCE_FUNCTION_DIR)/ai-cli.sh"\n' "$(SOURCE_FUNCTION_DIR)/ai-cli.sh"
 
 .PHONY: help check-tool check-source-function check-zsh-function build build-all install-zsh install-source

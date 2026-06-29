@@ -18,14 +18,14 @@ Supported tools:
 
 ## Quick Start
 
-Choose a tool, build its image, and install its shell function:
+Choose a tool, build its image, and install the shared shell function:
 
 ```sh
 git clone <repository-url>
 cd containerized-cli-tooling
 
 make build TOOL=codex
-make install-source TOOL=codex
+make install-source
 ```
 
 The install command prints the `source` line to add to `~/.bashrc` or
@@ -34,16 +34,16 @@ from a project directory:
 
 ```sh
 cd /path/to/project
-codex
+ai-cli codex .
 ```
 
 By default, the current directory is mounted as the project. Pass a different
-project directory as the wrapper's first argument when needed:
+tool name and project directory when needed:
 
 ```sh
-codex /path/to/project
-copilot /path/to/project
-gemini /path/to/project
+ai-cli codex /path/to/project
+ai-cli copilot /path/to/project
+ai-cli gemini /path/to/project
 ```
 
 ## Project-Scoped Customization
@@ -231,10 +231,9 @@ make build TOOL=rovo
 ```
 
 This repository currently provides `rovo.Dockerfile` for the agnostic wrapper
-path, so `ai-cli rovo` starts Rovo Dev in the mounted project. Dedicated
-`shell-functions/rovo.sh` and `zsh-autoload-funcs/rovo` wrappers have not been
-added, so `make install-source TOOL=rovo` and `make install-zsh TOOL=rovo`
-will report that no per-tool shell function exists.
+path, so `ai-cli rovo .` starts Rovo Dev in the mounted project. The shared
+`ai-cli` sourceable and Zsh autoload functions support Rovo through the same
+`ai-cli <tool> <project>` command form as the other tools.
 
 Rovo Dev stores user configuration at `~/.rovodev/config.yml`. The agnostic
 wrapper mounts `/home/rovo` from the persistent `rovo-home` volume, so Rovo
@@ -253,7 +252,7 @@ Zsh users can install a function into `~/.zfunc` instead:
 
 ```sh
 make build TOOL=codex
-make install-zsh TOOL=codex
+make install-zsh
 ```
 
 Add the lines printed by `make install-zsh` to `~/.zshrc`. The default setup
@@ -261,14 +260,14 @@ is:
 
 ```zsh
 fpath=("$HOME/.zfunc" $fpath)
-autoload -Uz codex
+autoload -Uz ai-cli
 ```
 
-Use `TOOL=copilot` for Copilot. To install somewhere else, override the
+Use `ai-cli copilot .` for Copilot. To install somewhere else, override the
 destination:
 
 ```sh
-make install-zsh TOOL=codex ZSH_FUNCTION_DIR="$HOME/.config/zsh/functions"
+make install-zsh ZSH_FUNCTION_DIR="$HOME/.config/zsh/functions"
 ```
 
 ## Source Directly From The Clone
@@ -276,7 +275,7 @@ make install-zsh TOOL=codex ZSH_FUNCTION_DIR="$HOME/.config/zsh/functions"
 Installing is optional. A Bash or Zsh shell can source a function directly:
 
 ```sh
-source /path/to/containerized-cli-tooling/shell-functions/codex.sh
+source /path/to/containerized-cli-tooling/shell-functions/ai-cli.sh
 ```
 
 Add that line to the relevant shell startup file to load it automatically.

@@ -28,6 +28,12 @@ assert_not_contains() {
     fi
 }
 
+assert_file_exists() {
+    local file="${1}"
+
+    [[ -f "${file}" ]] || fail "missing expected file: ${file}"
+}
+
 export HOME="${tmpdir}/home"
 export AI_HARNESS_ROOT="${tmpdir}/harness"
 mkdir -p "${HOME}" "${AI_HARNESS_ROOT}/build/copilot" "${tmpdir}/bin" "${tmpdir}/project"
@@ -68,5 +74,23 @@ assert_not_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=/workspace/AGE
 assert_contains "${repo_root}/README.md" '/home/copilot/.copilot/agent-harness'
 assert_contains "${repo_root}/README.md" 'docker run --rm --entrypoint sh'
 assert_contains "${repo_root}/README.md" "copilot-sandbox -lc 'test -r /home/copilot/.copilot/agent-harness/AGENTS.md'"
+
+# Validate Make install targets install the shared ai-cli entrypoint without TOOL.
+source_install_output="$(
+    make -C "${repo_root}" install-source SOURCE_FUNCTION_DIR="${tmpdir}/source-functions" 2>&1
+)"
+assert_file_exists "${tmpdir}/source-functions/ai-cli.sh"
+assert_contains "${tmpdir}/source-functions/ai-cli.sh" 'ai-cli ()'
+[[ "${source_install_output}" == *'source "'*"ai-cli.sh"* ]] || fail "install-source output does not source ai-cli.sh"
+
+zsh_install_output="$(
+    make -C "${repo_root}" install-zsh ZSH_FUNCTION_DIR="${tmpdir}/zfunc" 2>&1
+)"
+assert_file_exists "${tmpdir}/zfunc/ai-cli"
+assert_contains "${tmpdir}/zfunc/ai-cli" 'Usage: ai-cli <codex|copilot|gemini|rovo> [project]'
+[[ "${zsh_install_output}" == *'autoload -Uz ai-cli'* ]] || fail "install-zsh output does not autoload ai-cli"
+
+assert_contains "${repo_root}/README.md" 'ai-cli codex .'
+assert_contains "${repo_root}/README.md" 'ai-cli <tool> <project>'
 
 printf '%s\n' 'ai-cli harness smoke checks passed'

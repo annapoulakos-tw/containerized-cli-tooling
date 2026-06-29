@@ -11,6 +11,8 @@ TOOL ?=
 ZSH_FUNCTION_DIR ?= $(HOME)/.zfunc
 SOURCE_FUNCTION_DIR ?= $(HOME)/.local/share/containerized-cli-tooling
 
+DOCKER_OPTS ?=
+
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_-]+:.*## / {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -22,7 +24,7 @@ build: check-tool ## Build one image: make build TOOL=codex
 
 build-all: ## Build every supported image
 	@for tool in $(TOOLS); do \
-		docker build --file "./dockerfiles/$${tool}.Dockerfile" --tag "$${tool}-sandbox" .; \
+		docker build $(DOCKER_OPTS) --file "./dockerfiles/$${tool}.Dockerfile" --tag "$${tool}-sandbox" .; \
 	done
 
 check-source-function:

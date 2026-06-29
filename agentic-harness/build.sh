@@ -60,6 +60,16 @@ copy_support_dir() {
     fi
 }
 
+copy_packets() {
+    mkdir -p "${build}/packets"
+    cp "${canonical}/packets/"*.md "${build}/packets/"
+}
+
+copy_copilot_files() {
+    cp "${canonical}/bootstrap/copilot.md" "${build}/BOOTSTRAP.md"
+    cp "${canonical}/tool-profiles/copilot.md" "${build}/tool-profile.md"
+}
+
 {
     printf '# Agentic Harness\n\n'
     printf 'This file is generated from canonical harness definitions.\n\n'
@@ -94,12 +104,17 @@ done
 case "${tool}" in
     codex|copilot|gemini|rovo)
         copy_skills
+        copy_packets
         ;;
     *)
         printf '%s\n' "Unsupported tool: ${tool}" >&2
         exit 2
         ;;
 esac
+
+if [[ "${tool}" == "copilot" ]]; then
+    copy_copilot_files
+fi
 
 copy_support_dir "agents"
 copy_support_dir "commands"

@@ -16,7 +16,23 @@ The purpose of the state machine is to ensure work remains traceable, reviewable
 2. Agents may not expand scope without approval.
 3. Work must be represented by artifacts.
 4. Completion requires verification.
-5. No agent may approve its own work.
+5. No worker agent may verify or approve its own direct output.
+
+The spec-implementer may advance artifacts through QA, audit, and completion when acting as orchestrator, provided it creates separate QA/audit artifacts using the qa-reviewer/spec-auditor roles and records the evidence.
+
+## Orchestrated Review Rule
+
+The spec-implementer may initiate and coordinate QA, audit, and completion.
+
+This does not violate "no agent approves its own work" when:
+
+- QA is performed under the qa-reviewer role.
+- Audit is performed under the spec-auditor role.
+- QA and audit results are recorded as separate artifacts.
+- The implementer does not skip or collapse those review steps.
+- The completion report references the QA and audit artifacts.
+
+The spec-implementer must not mark a task or spec Complete based only on its own implementation summary.
 
 ---
 

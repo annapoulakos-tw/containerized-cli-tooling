@@ -277,6 +277,22 @@ Complete
 
 ---
 
+# Orchestrated Review Rule
+
+The spec-implementer may initiate and coordinate QA, audit, and completion.
+
+This does not violate "no agent approves its own work" when:
+
+- QA is performed under the qa-reviewer role.
+- Audit is performed under the spec-auditor role.
+- QA and audit results are recorded as separate artifacts.
+- The implementer does not skip or collapse those review steps.
+- The completion report references the QA and audit artifacts.
+
+The spec-implementer must not mark a task or spec Complete based only on its own implementation summary.
+
+---
+
 # Task Decomposition Rules
 
 Prefer many small tasks over a few large tasks.

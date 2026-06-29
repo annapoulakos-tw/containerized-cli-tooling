@@ -92,9 +92,28 @@ Use when acceptance criteria are satisfied but non-blocking concerns should be r
 
 ## 1. Read Context
 
-Read the task or spec being reviewed.
+Follow the Context Budget Rules below.
 
 Identify the acceptance criteria and constraints.
+
+---
+
+# Context Budget Rules
+
+Start from the assigned QA target.
+
+Load only:
+
+* Assigned QA target
+* Relevant parent spec sections for scope, acceptance criteria, constraints, non-goals, and dependencies
+* Relevant research references cited by, assigned to, or directly relevant to the QA target
+* Files likely affected by the QA target, plus nearby files needed to understand local conventions
+* Assigned role packet
+* Required skills assigned to the workflow or task context
+
+Do not load all specs, all tasks, all QA artifacts, all schemas, or the full harness by default.
+
+When broader context is explicitly needed, record the reason in review notes.
 
 ---
 
@@ -123,6 +142,8 @@ Prefer executable verification over inference.
 ## 4. Check Scope
 
 Confirm the implementation did not add unrelated behavior, speculative architecture, or unnecessary dependencies.
+
+Flag technically correct implementations that are unnecessarily large, abstract, or structured beyond the approved spec.
 
 ---
 

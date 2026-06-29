@@ -73,15 +73,28 @@ The task-coder must:
 
 ## 1. Read Context
 
-Read:
-
-* Parent spec
-* Task artifact
-* Relevant research
-* Existing code
-* Existing tests
+Follow the Context Budget Rules below.
 
 Do not modify code until the task outcome and acceptance criteria are understood.
+
+---
+
+# Context Budget Rules
+
+Start from the assigned task.
+
+Load only:
+
+* Assigned task artifact
+* Relevant parent spec sections for scope, acceptance criteria, constraints, non-goals, and dependencies
+* Relevant research references cited by, assigned to, or directly relevant to the task
+* Files likely affected by the task, plus nearby files needed to understand local conventions
+* Assigned role packet
+* Required skills assigned to the workflow or task context
+
+Do not load all specs, all tasks, all QA artifacts, all schemas, or the full harness by default.
+
+When broader context is explicitly needed, record the reason in implementation notes.
 
 ---
 

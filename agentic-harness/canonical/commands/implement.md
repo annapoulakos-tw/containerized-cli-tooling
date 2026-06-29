@@ -18,6 +18,8 @@ The `/implement` command is the primary orchestration entry point for turning a 
 
 Implementation is owned by the spec-implementer agent.
 
+The `/implement` command includes QA, audit, and completion. Do not stop at QA unless blocked or explicitly instructed to pause.
+
 ---
 
 # Inputs

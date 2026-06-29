@@ -22,6 +22,7 @@ This includes:
 
 * agents
 * commands
+* packets
 * skills
 * schemas
 * templates
@@ -51,6 +52,14 @@ Files under `build/` may be generated, copied, or manually refreshed from canoni
 
 The build directory is not the source of truth.
 
+Workflow-specific role packets live under:
+
+```text
+build/<tool>/packets/
+```
+
+Packets are generated or copied from canonical harness definitions. They are smaller instruction files for one workflow and do not replace the existing generated `AGENTS.md`.
+
 ---
 
 # Goal
@@ -79,6 +88,7 @@ The behavior should remain consistent.
 ```text
 canonical/agents/*
 canonical/commands/*
+canonical/packets/*
 canonical/skills/*
 canonical/schemas/*
 canonical/templates/*
@@ -89,6 +99,7 @@ canonical/state/*
 
 ```text
 build/codex/AGENTS.md
+build/codex/packets/*.md
 build/codex/skills/*/SKILL.md
 ```
 
@@ -96,9 +107,12 @@ build/codex/skills/*/SKILL.md
 
 ```text
 build/copilot/AGENTS.md
+build/copilot/BOOTSTRAP.md
+build/copilot/packets/*.md
+build/copilot/tool-profile.md
 ```
 
-Additional Copilot-specific instruction files may be added later if useful.
+The Copilot bootstrap and tool profile are copied from canonical Copilot-specific source files.
 
 ---
 
@@ -113,7 +127,8 @@ For Codex:
 3. Include command definitions.
 4. Include agent definitions.
 5. Include state and artifact rules.
-6. Copy each canonical skill into `build/codex/skills/<skill-name>/SKILL.md`.
+6. Copy workflow packets into `build/codex/packets/`.
+7. Copy each canonical skill into `build/codex/skills/<skill-name>/SKILL.md`.
 
 For Copilot:
 
@@ -122,7 +137,10 @@ For Copilot:
 3. Include command definitions.
 4. Include agent definitions.
 5. Include state and artifact rules.
-6. Include concise skill summaries inline.
+6. Copy the Copilot bootstrap into `build/copilot/BOOTSTRAP.md`.
+7. Copy the Copilot tool profile into `build/copilot/tool-profile.md`.
+8. Copy workflow packets into `build/copilot/packets/`.
+9. Include concise skill summaries inline.
 
 ---
 
@@ -133,8 +151,9 @@ A future build script may:
 1. Read canonical files.
 2. Validate required files exist.
 3. Concatenate selected files into tool-specific `AGENTS.md`.
-4. Copy skills into tool-specific skill directories.
-5. Emit warnings for missing templates or schemas.
+4. Copy workflow packets into tool-specific packet directories.
+5. Copy skills into tool-specific skill directories.
+6. Emit warnings for missing templates or schemas.
 
 The script should be simple and deterministic.
 

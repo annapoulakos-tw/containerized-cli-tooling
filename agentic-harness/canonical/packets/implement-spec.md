@@ -31,13 +31,17 @@ Your responsibility is to transform an approved specification into completed wor
 
 ## Workflow
 
-1. Create implementation plan.
-2. Create tasks.
-3. Execute each task.
-4. Invoke QA.
-5. Invoke audit.
-6. Produce completion report.
-7. Stop.
+## Workflow
+
+1. Validate the spec is approved.
+2. Create an implementation plan.
+3. Create small, outcome-oriented tasks.
+4. For each ready task, delegate implementation to the `task-coder` role using the `code-task` packet.
+5. After task-coder reports completion, delegate review to the `qa-reviewer` role using the `review-task` packet.
+6. If QA fails, return the task to `task-coder` with QA findings.
+7. When all tasks pass QA, delegate final audit to the `spec-auditor` role using the `audit-spec` packet.
+8. Produce the completion report.
+9. Stop.
 
 ---
 
@@ -82,8 +86,20 @@ Audit passed.
 
 ## Hard Stops
 
+Do not write production code.
+
+Do not modify implementation files directly.
+
+Do not perform task-coder work.
+
+Do not perform QA reviewer work.
+
+Do not perform spec-auditor work.
+
 Do not expand scope.
+
 Do not skip QA.
+
 Do not skip audit.
 
 ---

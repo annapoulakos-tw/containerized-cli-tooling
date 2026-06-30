@@ -36,8 +36,10 @@ assert_file_exists() {
 
 export HOME="${tmpdir}/home"
 export AI_HARNESS_ROOT="${tmpdir}/harness"
-mkdir -p "${HOME}" "${AI_HARNESS_ROOT}/build/copilot" "${tmpdir}/bin" "${tmpdir}/project"
-printf 'generated harness\n' > "${AI_HARNESS_ROOT}/build/copilot/AGENTS.md"
+mkdir -p "${HOME}" "${AI_HARNESS_ROOT}/build/copilot" "${AI_HARNESS_ROOT}/build/gemini" "${AI_HARNESS_ROOT}/build/rovo" "${tmpdir}/bin" "${tmpdir}/project"
+printf '%s\n' '/home/copilot/.copilot/agent-harness/BOOTSTRAP.md' > "${AI_HARNESS_ROOT}/build/copilot/AGENTS.md"
+printf '%s\n' 'generated gemini harness' > "${AI_HARNESS_ROOT}/build/gemini/AGENTS.md"
+printf '%s\n' 'generated rovo harness' > "${AI_HARNESS_ROOT}/build/rovo/AGENTS.md"
 
 cat > "${AI_HARNESS_ROOT}/build.sh" <<'BUILD_SH'
 #!/usr/bin/env bash
@@ -58,22 +60,64 @@ export PATH="${tmpdir}/bin:${PATH}"
 
 # Exercise the sourceable Bash wrapper with fake docker and harness tooling.
 source "${repo_root}/shell-functions/ai-cli.sh"
+export COPILOT_GITHUB_TOKEN="fake-token-must-not-be-logged"
 ai-cli copilot "${tmpdir}/project"
 
 grep -Fx 'copilot' "${AI_HARNESS_ROOT}/build-called" >/dev/null || fail "copilot harness build was not refreshed"
+assert_contains "${tmpdir}/docker-args" "--env COPILOT_GITHUB_TOKEN"
+assert_not_contains "${tmpdir}/docker-args" "fake-token-must-not-be-logged"
 assert_contains "${tmpdir}/docker-args" "type=bind,src=${AI_HARNESS_ROOT}/build/copilot,dst=/home/copilot/.copilot/agent-harness,readonly"
+assert_contains "${tmpdir}/docker-args" "copilot-sandbox copilot"
 assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/AGENTS.md"
 
+unset COPILOT_GITHUB_TOKEN
+ai-cli copilot "${tmpdir}/project"
+assert_not_contains "${tmpdir}/docker-args" "--env COPILOT_GITHUB_TOKEN"
+
+ai-cli gemini "${tmpdir}/project"
+assert_contains "${tmpdir}/docker-args" "--env GEMINI_API_KEY"
+assert_contains "${tmpdir}/docker-args" "--env GOOGLE_CLOUD_PROJECT"
+assert_contains "${tmpdir}/docker-args" "--env GOOGLE_CLOUD_LOCATION"
+assert_contains "${tmpdir}/docker-args" "--env GOOGLE_GENAI_USE_VERTEXAI"
+assert_not_contains "${tmpdir}/docker-args" "--env COPILOT_GITHUB_TOKEN"
+
+ai-cli rovo "${tmpdir}/project"
+assert_contains "${tmpdir}/docker-args" "--env ROVO_EMAIL"
+assert_contains "${tmpdir}/docker-args" "--env ROVO_DEV_API_TOKEN"
+assert_not_contains "${tmpdir}/docker-args" "--env COPILOT_GITHUB_TOKEN"
+
 # Validate the Zsh autoload wrapper mirrors the same behavior without requiring zsh.
-assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'AI_HARNESS_ROOT:-${HOME}/code/agentic-harness'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'AI_HARNESS_ROOT:-${HOME}/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" '"${harness_root}/build.sh" "${tool}"'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'Missing generated harness build: %s'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'old aggregate harness build'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=${container_home}/.${customization_base}/agent-harness,readonly'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'command=("${tool}")'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" '--env COPILOT_GITHUB_TOKEN'
 assert_not_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=/workspace/AGENTS.md'
+
+chmod -x "${AI_HARNESS_ROOT}/build.sh"
+rm -rf "${AI_HARNESS_ROOT}/build/copilot"
+if ai-cli copilot "${tmpdir}/project" 2>"${tmpdir}/missing-build.err"; then
+    fail "copilot wrapper succeeded without a generated harness build"
+fi
+assert_contains "${tmpdir}/missing-build.err" "Missing generated harness build: ${AI_HARNESS_ROOT}/build/copilot"
+
+mkdir -p "${AI_HARNESS_ROOT}/build/copilot"
+printf '%s\n' '# Agentic Harness' > "${AI_HARNESS_ROOT}/build/copilot/AGENTS.md"
+if ai-cli copilot "${tmpdir}/project" 2>"${tmpdir}/old-build.err"; then
+    fail "copilot wrapper succeeded with an old aggregate AGENTS.md"
+fi
+assert_contains "${tmpdir}/old-build.err" 'old aggregate harness build'
 
 # Validate documentation exposes the stable Copilot mount path and verification command.
 assert_contains "${repo_root}/README.md" '/home/copilot/.copilot/agent-harness'
 assert_contains "${repo_root}/README.md" 'docker run --rm --entrypoint sh'
 assert_contains "${repo_root}/README.md" "copilot-sandbox -lc 'test -r /home/copilot/.copilot/agent-harness/AGENTS.md'"
+assert_contains "${repo_root}/README.md" '## Copilot Authentication'
+assert_contains "${repo_root}/README.md" 'export COPILOT_GITHUB_TOKEN="<your-token>"'
+assert_contains "${repo_root}/README.md" '[GitHub Copilot CLI: Authenticating GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli)'
+assert_contains "${repo_root}/dockerfiles/copilot.Dockerfile" '/home/copilot/.copilot'
 
 # Validate Make install targets install the shared ai-cli entrypoint without TOOL.
 source_install_output="$(

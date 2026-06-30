@@ -25,7 +25,7 @@ ai-cli () {
     local -a command=()
 
     local cache_tmpfs="${container_home}/.cache"
-    local harness_root="${AI_HARNESS_ROOT:-${HOME}/code/agentic-harness}"
+    local harness_root="${AI_HARNESS_ROOT:-${HOME}/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}"
     local harness_build="${harness_root}/build/${tool}"
 
     local -a docker_arguments=(
@@ -46,6 +46,11 @@ ai-cli () {
         copilot|gemini)
             cache_tmpfs="${cache_tmpfs}:uid=1001,gid=1001,mode=700,exec"
             customization_directories=(skills agents)
+            command=("${tool}")
+
+            if [[ "${tool}" == "copilot" && -n "${COPILOT_GITHUB_TOKEN:-}" ]]; then
+                docker_arguments+=(--env COPILOT_GITHUB_TOKEN)
+            fi
 
             if [[ "${tool}" == "gemini" ]]; then
                 docker_arguments+=(
@@ -109,17 +114,35 @@ ai-cli () {
         "${harness_root}/build.sh" "${tool}" || return
     fi
 
+    if [[ ! -d "${harness_build}" ]]; then
+        printf 'Missing generated harness build: %s\n' "${harness_build}" >&2
+        printf 'Set AI_HARNESS_ROOT to the agentic-harness checkout or run its build.sh first.\n' >&2
+        return 1
+    fi
+
+    if [[ "${tool}" == "codex" || "${tool}" == "copilot" ]]; then
+        if ! grep -F "/home/${tool}/.${tool}/agent-harness/BOOTSTRAP.md" "${harness_build}/AGENTS.md" >/dev/null 2>&1; then
+            printf 'Generated %s AGENTS.md does not point at BOOTSTRAP.md: %s/AGENTS.md\n' "${tool}" "${harness_build}" >&2
+            printf 'Rebuild or update AI_HARNESS_ROOT; this looks like an old aggregate harness build.\n' >&2
+            return 1
+        fi
+    fi
+
     # Tool-specific generated harness.
     #
     # This intentionally does NOT mount over /workspace/AGENTS.md.
     # Project-level AGENTS.md remains owned by the project.
-    if [[ -d "${harness_build}" ]]; then
-        docker_arguments+=(
-            --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
-        )
-    fi
+    docker_arguments+=(
+        --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
+    )
 
     docker_arguments+=(--workdir /workspace)
+
+    if [[ -n "${AI_CLI_DEBUG:-}" ]]; then
+        printf 'Docker Args: %s\n' "${docker_arguments[*]}"
+        printf 'Image: %s\n' "${image}"
+        printf 'Command: %s\n' "${command[*]}"
+    fi
 
     docker run "${docker_arguments[@]}" "${image}" "${command[@]}"
 }

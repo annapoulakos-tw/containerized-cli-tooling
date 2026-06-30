@@ -77,6 +77,14 @@ Report the created or updated path in the final response.
 
 ---
 
+## Artifact Path Rule
+
+All harness runtime artifacts must be written under `{{ARTIFACT_ROOT}}`.
+
+Any artifact created outside `{{ARTIFACT_ROOT}}` is invalid and must be treated as a harness error.
+
+---
+
 ## Required Sections
 
 A research artifact must contain:

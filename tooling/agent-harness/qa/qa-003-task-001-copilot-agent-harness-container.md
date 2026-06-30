@@ -15,7 +15,7 @@ Existing Rovo and Makefile changes are accepted external context per user instru
 ## Acceptance Criteria Verification
 
 * `agentic-harness/build.sh copilot` produces `agentic-harness/build/copilot/AGENTS.md` and support directories from canonical definitions.
-* The Bash wrapper refreshes `${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}` when `build.sh` is executable and mounts the generated Copilot harness read-only at `/home/copilot/.copilot/agent-harness`.
+* The Bash wrapper refreshes `${AI_HARNESS_ROOT:-$HOME/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}` when `build.sh` is executable and mounts the generated Copilot harness read-only at `/home/copilot/.copilot/agent-harness`.
 * The Zsh autoload wrapper mirrors the Bash wrapper's Copilot harness refresh and mount behavior.
 * The harness mount targets the tool home path and does not overwrite `/workspace/AGENTS.md`.
 * README documents `/home/copilot/.copilot/agent-harness` and verification commands.

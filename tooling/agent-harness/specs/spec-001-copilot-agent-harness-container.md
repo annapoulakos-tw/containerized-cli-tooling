@@ -10,7 +10,7 @@ When a user builds and runs the Copilot container through the existing tooling, 
 
 ## Acceptance Criteria
 
-* Given the agent harness source exists at `${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}`, the repository can produce a Copilot-specific harness build artifact at `build/copilot`.
+* Given the agent harness source exists at `${AI_HARNESS_ROOT:-$HOME/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}`, the repository can produce a Copilot-specific harness build artifact at `build/copilot`.
 * Given the Copilot wrapper starts a container, it refreshes or uses the Copilot harness build before container startup when the harness build tooling is available.
 * Given the Copilot harness build exists on the host, the Copilot container mounts `build/copilot` read-only at `/home/copilot/.copilot/agent-harness`.
 * The Copilot mount location `/home/copilot/.copilot/agent-harness` is documented and stable enough for users to reference in startup instructions.
@@ -21,7 +21,7 @@ When a user builds and runs the Copilot container through the existing tooling, 
 
 ## Assumptions
 
-* confirmed: The host harness root is `${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}`.
+* confirmed: The host harness root is `${AI_HARNESS_ROOT:-$HOME/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}`.
 * confirmed: The Copilot container harness path is `/home/copilot/.copilot/agent-harness`.
 * confirmed: The Codex container harness path remains `/home/codex/.codex/agent-harness`.
 * confirmed: This spec only requires building and mounting the files at stable paths; it does not require automatic Copilot discovery.

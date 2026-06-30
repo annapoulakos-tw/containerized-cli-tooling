@@ -11,7 +11,7 @@ The Copilot wrapper prepares the generated Copilot harness when tooling is avail
 ## Acceptance Criteria
 
 * `agentic-harness/build.sh copilot` produces `agentic-harness/build/copilot/AGENTS.md` and support directories from canonical definitions.
-* The sourceable Bash wrapper refreshes or uses `${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}/build/copilot` and mounts it read-only at `/home/copilot/.copilot/agent-harness` when present.
+* The sourceable Bash wrapper refreshes or uses `${AI_HARNESS_ROOT:-$HOME/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}/build/copilot` and mounts it read-only at `/home/copilot/.copilot/agent-harness` when present.
 * The Zsh autoload wrapper has matching Copilot harness refresh and read-only mount behavior.
 * The wrappers do not mount the harness over `/workspace/AGENTS.md`.
 * The README documents the Copilot harness mount path and a command to verify files are readable from a running Copilot container.

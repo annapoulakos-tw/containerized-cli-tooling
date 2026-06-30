@@ -17,7 +17,7 @@ local project_name
 project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
 
 local cache_tmpfs="${container_home}/.cache"
-local harness_root="${AI_HARNESS_ROOT:-${HOME}/code/agentic-harness}"
+local harness_root="${AI_HARNESS_ROOT:-${HOME}/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}"
 local harness_build="${harness_root}/build/${tool}"
 local customization_base="${tool}"
 local -a customization_directories=(agents)
@@ -41,6 +41,10 @@ case "${tool}" in
   copilot|gemini)
     cache_tmpfs="${cache_tmpfs}:uid=1001,gid=1001,mode=700,exec"
     customization_directories=(skills agents)
+    command=("${tool}")
+    if [[ "${tool}" == "copilot" && -n "${COPILOT_GITHUB_TOKEN:-}" ]]; then
+      docker_arguments+=(--env COPILOT_GITHUB_TOKEN)
+    fi
     if [[ "${tool}" == "gemini" ]]; then
       docker_arguments+=(
         --env GEMINI_API_KEY
@@ -98,11 +102,23 @@ if [[ -x "${harness_root}/build.sh" ]]; then
   "${harness_root}/build.sh" "${tool}" || return
 fi
 
-if [[ -d "${harness_build}" ]]; then
-  docker_arguments+=(
-    --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
-  )
+if [[ ! -d "${harness_build}" ]]; then
+  printf 'Missing generated harness build: %s\n' "${harness_build}" >&2
+  printf 'Set AI_HARNESS_ROOT to the agentic-harness checkout or run its build.sh first.\n' >&2
+  return 1
 fi
+
+if [[ "${tool}" == "codex" || "${tool}" == "copilot" ]]; then
+  if ! grep -F "/home/${tool}/.${tool}/agent-harness/BOOTSTRAP.md" "${harness_build}/AGENTS.md" >/dev/null 2>&1; then
+    printf 'Generated %s AGENTS.md does not point at BOOTSTRAP.md: %s/AGENTS.md\n' "${tool}" "${harness_build}" >&2
+    printf 'Rebuild or update AI_HARNESS_ROOT; this looks like an old aggregate harness build.\n' >&2
+    return 1
+  fi
+fi
+
+docker_arguments+=(
+  --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
+)
 
 docker_arguments+=(--workdir /workspace)
 

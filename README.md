@@ -160,9 +160,36 @@ generated Copilot harness build:
 
 ```sh
 docker run --rm --entrypoint sh \
-  --mount "type=bind,src=${AI_HARNESS_ROOT:-$HOME/code/agentic-harness}/build/copilot,dst=/home/copilot/.copilot/agent-harness,readonly" \
+  --mount "type=bind,src=${AI_HARNESS_ROOT:-$HOME/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}/build/copilot,dst=/home/copilot/.copilot/agent-harness,readonly" \
   copilot-sandbox -lc 'test -r /home/copilot/.copilot/agent-harness/AGENTS.md'
 ```
+
+If `ai-cli copilot .` exits with status 1 and no useful output after an image
+rebuild, repair the persistent Copilot home volume and start again:
+
+```sh
+make build TOOL=copilot
+docker run --rm -u root --mount "type=volume,src=copilot-home,dst=/home/copilot" copilot-sandbox sh -lc 'mkdir -p /home/copilot/.copilot && chown -R copilot:copilot /home/copilot/.copilot'
+ai-cli copilot .
+```
+
+This can be needed when an older `copilot-home` volume was initialized before
+the image created `/home/copilot/.copilot` with the correct ownership.
+
+## Copilot Authentication
+
+Copilot CLI supports standard token authentication through
+`COPILOT_GITHUB_TOKEN`. Export the token on the host before starting Copilot:
+
+```sh
+export COPILOT_GITHUB_TOKEN="<your-token>"
+ai-cli copilot .
+```
+
+When `COPILOT_GITHUB_TOKEN` is set, the wrapper passes the variable name into
+the Copilot container without printing its value. If the variable is not set,
+Copilot keeps using the existing `/login` flow and the persistent
+`copilot-home` volume.
 
 ## Gemini Authentication
 
@@ -326,6 +353,7 @@ docker volume rm codex-home
 - [OpenAI Codex: Agent Skills](https://developers.openai.com/codex/skills)
 - [OpenAI Codex: Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md)
 - [OpenAI Codex: Subagents](https://developers.openai.com/codex/subagents)
+- [GitHub Copilot CLI: Authenticating GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli)
 - [GitHub Copilot CLI: Adding agent skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills)
 - [GitHub Copilot CLI: Creating and using custom agents](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli)
 - [GitHub Copilot CLI: Adding custom instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions)

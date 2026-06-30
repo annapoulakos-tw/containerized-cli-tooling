@@ -20,11 +20,25 @@ tools=(
     rovo
 )
 
+harness_root_for() {
+    local tool="${1}"
+
+    case "${tool}" in
+        rovo)
+            printf '/home/rovo/.rovodev/agent-harness'
+            ;;
+        *)
+            printf '/home/%s/.%s/agent-harness' "${tool}" "${tool}"
+            ;;
+    esac
+}
+
 check_tool() {
     local tool="${1}"
     local build
     local count
     local file
+    local harness_root
     local packet
     local packet_dir
 
@@ -32,6 +46,7 @@ check_tool() {
 
     build="${root}/build/${tool}"
     packet_dir="${build}/packets"
+    harness_root="$(harness_root_for "${tool}")"
 
     [[ -f "${build}/AGENTS.md" ]]
     [[ -d "${packet_dir}" ]]
@@ -53,7 +68,34 @@ check_tool() {
         grep -q '^## Context Budget$' "${file}"
         grep -q '^## Schema and Template Summary$' "${file}"
         grep -q '^## Assigned Skills$' "${file}"
+        grep -q '^## Runtime$' "${file}"
+        grep -q '^## Embedded Command:' "${file}"
+        grep -q '^## Embedded Agent:' "${file}"
+        grep -q '^## Embedded State Rules: state/state-machine.md$' "${file}"
+        grep -Eq '^## Embedded Skill:|^## Embedded Skills$' "${file}"
+        grep -q "^Harness root: \`${harness_root}\`$" "${file}"
+        grep -q '^Artifact root: `/workspace/tooling/agent-harness`$' "${file}"
+
+        ! grep -Eiq '(load|read|open|consult|refer to|see)[^.\n]*(commands/|agents/|schemas/|templates/|state/|skills/)' "${file}"
     done
+
+    file="${packet_dir}/spec-create.md"
+    grep -q '^## Embedded Command: commands/spec.md$' "${file}"
+    grep -q '^## Embedded Agent: agents/spec-creator/AGENTS.md$' "${file}"
+    grep -q '^## Embedded Template: templates/spec.md$' "${file}"
+    grep -q '^## Embedded Schema: schemas/spec.schema.md$' "${file}"
+    grep -q '^## Embedded State Rules: state/state-machine.md$' "${file}"
+    grep -q '^## Embedded Skill: skills/outcome-driven/SKILL.md$' "${file}"
+    grep -q 'Artifact path: `tooling/agent-harness/specs/spec-{{ID}}-{{SLUG}}.md`' "${file}"
+    grep -q 'A valid spec must contain all required fields' "${file}"
+    grep -q 'Draft -> Approved' "${file}"
+
+    grep -q '^## Embedded Template: templates/spec.md$' "${packet_dir}/spec-update.md"
+    grep -q '^## Embedded Schema: schemas/spec.schema.md$' "${packet_dir}/spec-review.md"
+    grep -q '^## Embedded Templates$' "${packet_dir}/implement-orchestrate.md"
+    grep -q '^## Embedded Template: templates/task.md$' "${packet_dir}/task-code.md"
+    grep -q '^## Embedded Template: templates/qa.md$' "${packet_dir}/qa-review.md"
+    grep -q '^## Embedded Template: templates/audit.md$' "${packet_dir}/audit-review.md"
 }
 
 checksum_packets() {

@@ -60,9 +60,32 @@ copy_support_dir() {
     fi
 }
 
+tool_harness_root() {
+    case "${tool}" in
+        rovo)
+            printf '/home/rovo/.rovodev/agent-harness'
+            ;;
+        *)
+            printf '/home/%s/.%s/agent-harness' "${tool}" "${tool}"
+            ;;
+    esac
+}
+
 copy_packets() {
+    local artifact_root="/workspace/tooling/agent-harness"
+    local file
+    local harness_root
+
+    harness_root="$(tool_harness_root)"
     mkdir -p "${build}/packets"
-    cp "${canonical}/packets/"*.md "${build}/packets/"
+
+    for file in "${canonical}/packets/"*.md; do
+        [[ -f "${file}" ]] || continue
+        sed \
+            -e "s|{{HARNESS_ROOT}}|${harness_root}|g" \
+            -e "s|{{ARTIFACT_ROOT}}|${artifact_root}|g" \
+            "${file}" > "${build}/packets/$(basename "${file}")"
+    done
 }
 
 copy_copilot_files() {

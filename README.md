@@ -127,12 +127,10 @@ skills, agent definitions, or their supporting files.
 
 ## Agent Harness
 
-To run the Agent Harness in your cli session, use the following snippet:
+To configure the Agent Harness in your cli session, use the following prompt:
 
 ```
 Read /home/{TOOL}/.{TOOL}/agent-harness/AGENTS.md.
-Use /home/{TOOL}/.{TOOL}/agent-harness as the harness root.
-Acknowledge loaded and wait.
 ```
 
 Where `{TOOL}` is the name of the tool you are using, i.e. `codex` or `copilot`.

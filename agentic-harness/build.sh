@@ -89,8 +89,12 @@ copy_packets() {
 }
 
 copy_copilot_files() {
-    cp "${canonical}/bootstrap/copilot.md" "${build}/BOOTSTRAP.md"
     cp "${canonical}/tool-profiles/copilot.md" "${build}/tool-profile.md"
+}
+
+render_bootstrap_files() {
+    sed "s|{TOOL}|${tool}|g" "${canonical}/bootstrap/AGENTS.md" > "${build}/AGENTS.md"
+    sed "s|{TOOL}|${tool}|g" "${canonical}/bootstrap/BOOTSTRAP.md" > "${build}/BOOTSTRAP.md"
 }
 
 {
@@ -138,6 +142,12 @@ esac
 if [[ "${tool}" == "copilot" ]]; then
     copy_copilot_files
 fi
+
+case "${tool}" in
+    codex|copilot)
+        render_bootstrap_files
+        ;;
+esac
 
 copy_support_dir "agents"
 copy_support_dir "commands"

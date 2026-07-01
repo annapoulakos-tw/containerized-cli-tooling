@@ -1,4 +1,4 @@
-# Packet: audit-spec
+# Agent: audit-spec
 
 ## Runtime
 

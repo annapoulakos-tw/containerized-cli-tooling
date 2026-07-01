@@ -120,14 +120,6 @@ ai-cli () {
         return 1
     fi
 
-    if [[ "${tool}" == "codex" || "${tool}" == "copilot" ]]; then
-        if ! grep -F "/home/${tool}/.${tool}/agent-harness/BOOTSTRAP.md" "${harness_build}/AGENTS.md" >/dev/null 2>&1; then
-            printf 'Generated %s AGENTS.md does not point at BOOTSTRAP.md: %s/AGENTS.md\n' "${tool}" "${harness_build}" >&2
-            printf 'Rebuild or update AI_HARNESS_ROOT; this looks like an old aggregate harness build.\n' >&2
-            return 1
-        fi
-    fi
-
     # Tool-specific generated harness.
     #
     # This intentionally does NOT mount over /workspace/AGENTS.md.

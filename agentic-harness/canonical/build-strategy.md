@@ -21,11 +21,7 @@ canonical/
 This includes:
 
 * agents
-* commands
-* packets
 * skills
-* schemas
-* templates
 * state
 * strategy
 
@@ -52,13 +48,13 @@ Files under `build/` may be generated, copied, or manually refreshed from canoni
 
 The build directory is not the source of truth.
 
-Workflow-specific role packets live under:
+Workflow-specific agent definitions live under:
 
 ```text
-build/<tool>/packets/
+build/<tool>/agents/
 ```
 
-Packets are generated or copied from canonical harness definitions. They are smaller instruction files for one workflow and do not replace the existing generated `AGENTS.md`.
+Agent definitions are generated or copied from canonical harness definitions. They are smaller instruction files for one workflow and do not replace the generated `AGENTS.md` bootstrap.
 
 ---
 
@@ -69,11 +65,9 @@ The goal is to support multiple AI CLI tools without rewriting the harness for e
 Each tool-specific build should expose the same conceptual harness:
 
 * same agents
-* same commands
 * same skills
 * same artifact contracts
 * same state machine
-* same templates
 
 The format may differ by tool.
 
@@ -87,11 +81,7 @@ The behavior should remain consistent.
 
 ```text
 canonical/agents/*
-canonical/commands/*
-canonical/packets/*
 canonical/skills/*
-canonical/schemas/*
-canonical/templates/*
 canonical/state/*
 ```
 
@@ -99,7 +89,7 @@ canonical/state/*
 
 ```text
 build/codex/AGENTS.md
-build/codex/packets/*.md
+build/codex/agents/*.md
 build/codex/skills/*/SKILL.md
 ```
 
@@ -107,12 +97,11 @@ build/codex/skills/*/SKILL.md
 
 ```text
 build/copilot/AGENTS.md
-build/copilot/BOOTSTRAP.md
-build/copilot/packets/*.md
+build/copilot/agents/*.md
 build/copilot/tool-profile.md
 ```
 
-The Copilot bootstrap and tool profile are copied from canonical Copilot-specific source files.
+The Copilot tool profile is copied from canonical Copilot-specific source files.
 
 ---
 
@@ -123,24 +112,15 @@ The first version may be manual.
 For Codex:
 
 1. Create `build/codex/AGENTS.md`.
-2. Include the strategic overview.
-3. Include command definitions.
-4. Include agent definitions.
-5. Include state and artifact rules.
-6. Copy workflow packets into `build/codex/packets/`.
-7. Copy each canonical skill into `build/codex/skills/<skill-name>/SKILL.md`.
+2. Copy workflow agent definitions into `build/codex/agents/`.
+3. Copy each canonical skill into `build/codex/skills/<skill-name>/SKILL.md`.
 
 For Copilot:
 
 1. Create `build/copilot/AGENTS.md`.
-2. Include the strategic overview.
-3. Include command definitions.
-4. Include agent definitions.
-5. Include state and artifact rules.
-6. Copy the Copilot bootstrap into `build/copilot/BOOTSTRAP.md`.
-7. Copy the Copilot tool profile into `build/copilot/tool-profile.md`.
-8. Copy workflow packets into `build/copilot/packets/`.
-9. Include concise skill summaries inline.
+2. Copy workflow agent definitions into `build/copilot/agents/`.
+3. Copy the Copilot tool profile into `build/copilot/tool-profile.md`.
+4. Copy each canonical skill into `build/copilot/skills/<skill-name>/SKILL.md`.
 
 ---
 
@@ -150,10 +130,9 @@ A future build script may:
 
 1. Read canonical files.
 2. Validate required files exist.
-3. Concatenate selected files into tool-specific `AGENTS.md`.
-4. Copy workflow packets into tool-specific packet directories.
+3. Render `canonical/bootstrap/AGENTS.md` into tool-specific `AGENTS.md`.
+4. Copy workflow agent definitions into tool-specific agent directories.
 5. Copy skills into tool-specific skill directories.
-6. Emit warnings for missing templates or schemas.
 
 The script should be simple and deterministic.
 

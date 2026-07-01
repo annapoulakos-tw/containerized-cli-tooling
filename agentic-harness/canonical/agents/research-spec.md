@@ -1,4 +1,4 @@
-# Packet: research
+# Agent: research-spec
 
 ## Runtime
 
@@ -33,7 +33,7 @@ Read only:
 - the research request
 - the parent specification
 - relevant referenced artifacts
-- this packet
+- this agent definition
 
 Do not load unrelated harness artifacts during normal execution.
 

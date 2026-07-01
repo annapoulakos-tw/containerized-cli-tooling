@@ -6,4 +6,4 @@ Copilot needs repeated harness-root anchors so it consistently uses `/home/copil
 
 Copilot needs explicit artifact-root rules so runtime specs, plans, tasks, research, QA, audits, and completion reports stay under `/workspace/tooling/agent-harness`.
 
-Copilot should use one role packet per workflow. Load the packet for the active workflow from `packets/`, then load only the focused context that packet requires.
+Copilot should use one workflow agent definition per workflow. Load the agent definition for the active workflow from `agents/`, then load only the focused context that definition requires.

@@ -1,4 +1,4 @@
-# Packet: review-spec
+# Agent: review-spec
 
 ## Runtime
 
@@ -25,7 +25,7 @@ Your responsibility is to independently evaluate a specification for correctness
 ## Inputs
 
 - target spec
-- this packet
+- this agent definition
 
 ---
 

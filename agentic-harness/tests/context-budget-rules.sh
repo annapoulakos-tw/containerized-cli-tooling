@@ -5,53 +5,48 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 "${root}/build.sh" codex >/dev/null
 
-agent_files=(
-    "${root}/canonical/agents/task-coder/AGENTS.md"
-    "${root}/canonical/agents/qa-reviewer/AGENTS.md"
-    "${root}/build/codex/agents/task-coder/AGENTS.md"
-    "${root}/build/codex/agents/qa-reviewer/AGENTS.md"
+canonical_agent_files=(
+    "${root}/canonical/agents/code-task.md"
+    "${root}/canonical/agents/review-task.md"
 )
 
-packet_files=(
-    "${root}/canonical/packets/task-code.md"
-    "${root}/canonical/packets/qa-review.md"
-    "${root}/build/codex/packets/task-code.md"
-    "${root}/build/codex/packets/qa-review.md"
+build_agent_files=(
+    "${root}/build/codex/agents/code-task.md"
+    "${root}/build/codex/agents/review-task.md"
 )
 
-for file in "${agent_files[@]}"; do
+for file in "${canonical_agent_files[@]}"; do
     [[ -f "${file}" ]]
-    grep -qi 'relevant parent spec sections' "${file}"
-    grep -qi 'relevant research references' "${file}"
-    grep -qi 'files likely affected' "${file}"
-    grep -qi 'required skills' "${file}"
-    grep -qi 'Do not load all specs' "${file}"
-    grep -qi 'all tasks' "${file}"
-    grep -qi 'all QA artifacts' "${file}"
-    grep -qi 'all schemas' "${file}"
-    grep -qi 'the full harness' "${file}"
-    grep -qi 'record the reason' "${file}"
+    grep -qi 'Never search `/workspace` for harness definitions' "${file}"
+    grep -qi 'Artifact root' "${file}"
+    grep -qi '{{ARTIFACT_ROOT}}' "${file}"
 done
 
-for file in "${packet_files[@]}"; do
+for file in "${build_agent_files[@]}"; do
     [[ -f "${file}" ]]
-    grep -qi 'relevant parent spec sections' "${file}"
-    grep -qi 'relevant research references' "${file}"
-    grep -qi 'files likely affected' "${file}"
-    grep -qi 'Do not read other harness instruction files' "${file}"
-    grep -qi 'Do not load all specs' "${file}"
-    grep -qi 'all tasks' "${file}"
-    grep -qi 'all QA artifacts' "${file}"
-    grep -qi 'the full harness' "${file}"
-    grep -qi 'record the reason' "${file}"
+    grep -qi 'Never search `/workspace` for harness definitions' "${file}"
+    grep -qi 'Artifact root' "${file}"
+    grep -qi '/workspace/tooling/agent-harness' "${file}"
+    ! grep -qi '{{ARTIFACT_ROOT}}' "${file}"
 done
 
-grep -q 'Start from the assigned task' "${root}/canonical/agents/task-coder/AGENTS.md"
-grep -q 'Start from the assigned task' "${root}/canonical/packets/task-code.md"
-grep -q 'Start from the assigned task' "${root}/build/codex/agents/task-coder/AGENTS.md"
-grep -q 'Start from the assigned task' "${root}/build/codex/packets/task-code.md"
+grep -q 'smallest correct change' "${root}/canonical/agents/code-task.md"
+grep -q 'Red-Green-Refactor' "${root}/canonical/agents/code-task.md"
+grep -q 'Verification recorded' "${root}/canonical/agents/code-task.md"
+grep -q 'Do not create new tasks' "${root}/canonical/agents/code-task.md"
 
-grep -q 'Start from the assigned QA target' "${root}/canonical/agents/qa-reviewer/AGENTS.md"
-grep -q 'Start from the assigned QA target' "${root}/canonical/packets/qa-review.md"
-grep -q 'Start from the assigned QA target' "${root}/build/codex/agents/qa-reviewer/AGENTS.md"
-grep -q 'Start from the assigned QA target' "${root}/build/codex/packets/qa-review.md"
+grep -q 'smallest correct change' "${root}/build/codex/agents/code-task.md"
+grep -q 'Red-Green-Refactor' "${root}/build/codex/agents/code-task.md"
+grep -q 'Verification recorded' "${root}/build/codex/agents/code-task.md"
+grep -q 'Do not create new tasks' "${root}/build/codex/agents/code-task.md"
+
+grep -q 'independently verify' "${root}/canonical/agents/review-task.md"
+grep -q 'Do not modify implementation files' "${root}/canonical/agents/review-task.md"
+grep -q 'Reject unnecessary complexity' "${root}/canonical/agents/review-task.md"
+
+grep -q 'independently verify' "${root}/build/codex/agents/review-task.md"
+grep -q 'Do not modify implementation files' "${root}/build/codex/agents/review-task.md"
+grep -q 'Reject unnecessary complexity' "${root}/build/codex/agents/review-task.md"
+
+[[ ! -d "${root}/canonical/packets" ]]
+[[ ! -d "${root}/build/codex/packets" ]]

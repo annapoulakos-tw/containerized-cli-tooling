@@ -3,14 +3,15 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-packets=(
-    spec-create
-    spec-review
-    spec-update
-    implement-orchestrate
-    task-code
-    qa-review
-    audit-review
+agents=(
+    audit-spec
+    code-task
+    create-spec
+    implement-spec
+    research-spec
+    review-spec
+    review-task
+    update-spec
 )
 
 tools=(
@@ -33,86 +34,94 @@ harness_root_for() {
     esac
 }
 
+check_canonical_layout() {
+    [[ -d "${root}/canonical/agents" ]]
+    [[ -d "${root}/canonical/bootstrap" ]]
+    [[ -d "${root}/canonical/skills" ]]
+    [[ -d "${root}/canonical/state" ]]
+    [[ -d "${root}/canonical/tool-profiles" ]]
+    [[ -f "${root}/canonical/build-strategy.md" ]]
+    [[ -f "${root}/canonical/strategy.md" ]]
+
+    [[ ! -d "${root}/canonical/packets" ]]
+    [[ ! -d "${root}/canonical/commands" ]]
+    [[ ! -d "${root}/canonical/schemas" ]]
+    [[ ! -d "${root}/canonical/templates" ]]
+    [[ ! -f "${root}/canonical/bootstrap/BOOTSTRAP.md" ]]
+
+    for agent in "${agents[@]}"; do
+        [[ -f "${root}/canonical/agents/${agent}.md" ]]
+    done
+
+    grep -q 'Write all spec artifacts under:' "${root}/canonical/agents/create-spec.md"
+    grep -q '`{{ARTIFACT_ROOT}}/specs/`' "${root}/canonical/agents/create-spec.md"
+    grep -q '`{{ARTIFACT_ROOT}}/specs/spec-<id>-<slug>.md`' "${root}/canonical/agents/create-spec.md"
+}
+
 check_tool() {
     local tool="${1}"
     local build
     local count
     local file
     local harness_root
-    local packet
-    local packet_dir
+    local agent
+
+    mkdir -p "${root}/build/${tool}/packets" "${root}/build/${tool}/commands"
+    printf 'stale\n' > "${root}/build/${tool}/packets/stale.md"
+    printf 'stale\n' > "${root}/build/${tool}/BOOTSTRAP.md"
+    printf 'stale\n' > "${root}/build/${tool}/commands/stale.md"
 
     "${root}/build.sh" "${tool}" >/dev/null
 
     build="${root}/build/${tool}"
-    packet_dir="${build}/packets"
     harness_root="$(harness_root_for "${tool}")"
 
     [[ -f "${build}/AGENTS.md" ]]
-    [[ -d "${packet_dir}" ]]
-    [[ -d "${build}/commands" ]]
-    [[ -d "${build}/schemas" ]]
-    [[ -d "${build}/templates" ]]
+    [[ -d "${build}/agents" ]]
     [[ -d "${build}/state" ]]
     [[ -d "${build}/skills" ]]
+    [[ ! -e "${build}/BOOTSTRAP.md" ]]
+    [[ ! -e "${build}/packets" ]]
+    [[ ! -e "${build}/commands" ]]
+    [[ ! -e "${build}/schemas" ]]
+    [[ ! -e "${build}/templates" ]]
 
-    count="$(find "${packet_dir}" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')"
-    [[ "${count}" == "${#packets[@]}" ]]
+    count="$(find "${build}/agents" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')"
+    [[ "${count}" == "${#agents[@]}" ]]
 
-    for packet in "${packets[@]}"; do
-        file="${packet_dir}/${packet}.md"
+    for agent in "${agents[@]}"; do
+        file="${build}/agents/${agent}.md"
         [[ -f "${file}" ]]
-        grep -q '^## Command$' "${file}"
-        grep -q '^## Agent$' "${file}"
-        grep -q '^## Artifact Rules$' "${file}"
-        grep -q '^## Context Budget$' "${file}"
-        grep -q '^## Schema and Template Summary$' "${file}"
-        grep -q '^## Assigned Skills$' "${file}"
-        grep -q '^## Runtime$' "${file}"
-        grep -q '^## Embedded Command:' "${file}"
-        grep -q '^## Embedded Agent:' "${file}"
-        grep -q '^## Embedded State Rules: state/state-machine.md$' "${file}"
-        grep -Eq '^## Embedded Skill:|^## Embedded Skills$' "${file}"
-        grep -q "^Harness root: \`${harness_root}\`$" "${file}"
-        grep -q '^Artifact root: `/workspace/tooling/agent-harness`$' "${file}"
-
-        ! grep -Eiq '(load|read|open|consult|refer to|see)[^.\n]*(commands/|agents/|schemas/|templates/|state/|skills/)' "${file}"
+        grep -q '^# Agent:' "${file}"
+        grep -q "^Harness root:$" "${file}"
+        grep -q "^Artifact root:$" "${file}"
+        grep -q "${harness_root}" "${file}"
+        grep -q '/workspace/tooling/agent-harness' "${file}"
+        ! grep -q '{{HARNESS_ROOT}}' "${file}"
+        ! grep -q '{{ARTIFACT_ROOT}}' "${file}"
     done
 
-    file="${packet_dir}/spec-create.md"
-    grep -q '^## Embedded Command: commands/spec.md$' "${file}"
-    grep -q '^## Embedded Agent: agents/spec-creator/AGENTS.md$' "${file}"
-    grep -q '^## Embedded Template: templates/spec.md$' "${file}"
-    grep -q '^## Embedded Schema: schemas/spec.schema.md$' "${file}"
-    grep -q '^## Embedded State Rules: state/state-machine.md$' "${file}"
-    grep -q '^## Embedded Skill: skills/outcome-driven/SKILL.md$' "${file}"
-    grep -q 'Artifact path: `tooling/agent-harness/specs/spec-{{ID}}-{{SLUG}}.md`' "${file}"
-    grep -q 'A valid spec must contain all required fields' "${file}"
-    grep -q 'Draft -> Approved' "${file}"
-
-    grep -q '^## Embedded Template: templates/spec.md$' "${packet_dir}/spec-update.md"
-    grep -q '^## Embedded Schema: schemas/spec.schema.md$' "${packet_dir}/spec-review.md"
-    grep -q '^## Embedded Templates$' "${packet_dir}/implement-orchestrate.md"
-    grep -q '^## Embedded Template: templates/task.md$' "${packet_dir}/task-code.md"
-    grep -q '^## Embedded Template: templates/qa.md$' "${packet_dir}/qa-review.md"
-    grep -q '^## Embedded Template: templates/audit.md$' "${packet_dir}/audit-review.md"
+    grep -q '`/workspace/tooling/agent-harness/specs/`' "${build}/agents/create-spec.md"
+    grep -q '`/workspace/tooling/agent-harness/specs/spec-<id>-<slug>.md`' "${build}/agents/create-spec.md"
 }
 
-checksum_packets() {
-    find "${root}/build" -path '*/packets/*.md' -type f -print0 \
+checksum_build() {
+    find "${root}/build" -type f -print0 \
         | sort -z \
         | xargs -0 sha256sum
 }
 
-for tool in "${tools[@]}"; do
-    check_tool "${tool}"
-done
-
-before="$(checksum_packets)"
+check_canonical_layout
 
 for tool in "${tools[@]}"; do
     check_tool "${tool}"
 done
 
-after="$(checksum_packets)"
+before="$(checksum_build)"
+
+for tool in "${tools[@]}"; do
+    check_tool "${tool}"
+done
+
+after="$(checksum_build)"
 [[ "${before}" == "${after}" ]]

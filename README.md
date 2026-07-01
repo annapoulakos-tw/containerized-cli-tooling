@@ -348,6 +348,96 @@ cache:
 docker volume rm codex-home
 ```
 
+---
+
+## Agent Information
+
+### `create-spec` / `spec-creator`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Converts user intent into a concise outcome-focused spec with acceptance criteria, assumptions, constraints, and non-goals. |
+| Required Inputs | User request; target spec if revising; agent definition. |
+| Generated Outputs | `/workspace/tooling/agent-harness/specs/spec-<id>-<slug>.md` |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/create-spec.md` |
+| Notes | New specs start as `Draft`. Must not implement, plan, QA, audit, or create tasks. |
+
+### `review-spec` / `spec-reviewer`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Independently reviews a spec for correctness, completeness, ambiguity, schema compliance, and approval readiness. |
+| Required Inputs | Target spec; agent definition. |
+| Generated Outputs | `/workspace/tooling/agent-harness/qa/qa-spec-<id>-<slug>.md` |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/review-spec.md` |
+| Notes | Read-only. Must not modify the spec or change status. |
+
+### `update-spec` / `spec-creator`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Revises an existing spec while preserving intent, applying approved changes, resolving assumptions/open questions, and keeping schema valid. |
+| Required Inputs | Existing spec; revision request. |
+| Generated Outputs | Updated spec. |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/update-spec.md` |
+| Notes | Must not implement or create plans. |
+
+### `implement-spec` / `spec-implementer`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Coordinates implementation of an approved spec by creating plans/tasks, spawning required roles, tracking state, and producing completion after QA and audit pass. |
+| Required Inputs | Approved spec; completed research; agent definition; existing plan/task artifacts if resuming. |
+| Generated Outputs | Plans, tasks, research requests, completion reports, spawn logs/handoff notes. |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/implement-spec.md` |
+| Notes | Coordinator only. Must not write production code, perform research, QA, or audit. If spawning is unavailable, must stop with handoff details. |
+
+### `research-spec` / `spec-researcher`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Investigates specific spec questions, gathers evidence, evaluates alternatives, and produces recommendations. |
+| Required Inputs | Research request; parent spec; referenced artifacts; agent definition. |
+| Generated Outputs | `/workspace/tooling/agent-harness/research/research-<id>-<slug>.md` |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/research-spec.md` |
+| Notes | Research artifacts start `Complete`. Does not modify specs, implement, plan, QA, audit, or mark specs complete. |
+
+### `code-task` / `task-coder`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Implements one assigned task using the smallest correct change, following Red-Green-Refactor and staying within task scope. |
+| Required Inputs | Assigned task; relevant spec sections; referenced research. |
+| Generated Outputs | Updated source files, tests, and `/workspace/tooling/agent-harness/tasks/task-<id>-<slug>.md` |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/code-task.md` |
+| Notes | Must not create tasks, update plans, create QA/audit/completion reports, or mark complete. |
+
+### `review-task` / `qa-reviewer`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Independently verifies task implementation, tests, acceptance criteria, repository conventions, assigned skills, and minimality. |
+| Required Inputs | Task; implementation; tests. |
+| Generated Outputs | `/workspace/tooling/agent-harness/qa/qa-task-<id>-<slug>.md` |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/review-task.md` |
+| Notes | Read-only for implementation. Produces pass/fail QA. Must not fix code. |
+
+### `audit-spec` / `spec-auditor`
+
+| Agent Detail | Value |
+| --- | --- |
+| Summary of responsibilities | Verifies the completed work followed process, artifacts exist and are consistent, and completion is evidence-backed. |
+| Required Inputs | Spec; plan; tasks; QA; completion. |
+| Generated Outputs | `/workspace/tooling/agent-harness/audits/audit-spec-<id>-<slug>.md` |
+| Agent definition location | `/home/codex/.codex/agent-harness/agents/audit-spec.md` |
+| Notes | Must not rewrite artifacts, create QA/task/plan/completion artifacts, or perform QA. |
+
+Global note: all harness artifacts must live under `/workspace/tooling/agent-harness`; creating root-level `specs/`, `tasks/`,
+`plans/`, `qa/`, `research/`, `audits/`, or `completion/` is invalid.
+
+
+---
+
 ## Bibliography
 
 - [OpenAI Codex: Agent Skills](https://developers.openai.com/codex/skills)

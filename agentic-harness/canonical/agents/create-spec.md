@@ -1,4 +1,4 @@
-# Packet: spec-create
+# Agent: create-spec
 
 ## Runtime
 
@@ -41,7 +41,7 @@ Read only:
 
 - the user request
 - the target spec (if revising)
-- this packet
+- this agent definition
 
 Do not load additional harness files during normal execution.
 
@@ -74,7 +74,7 @@ Specification doc
 
 Write only the following artifacts:
 
-- `{{ARTIFACT_ROOT}}/spec/spec-<id>-<slug>.md`
+- `{{ARTIFACT_ROOT}}/specs/spec-<id>-<slug>.md`
 
 Do not write this artifact anywhere else.
 

@@ -46,6 +46,22 @@ ai-cli copilot /path/to/project
 ai-cli gemini /path/to/project
 ```
 
+## Codex Authentication and Parallel Workers
+
+Codex authentication is managed separately from normal workers:
+
+```sh
+ai-cli-auth codex
+AI_WORKSTREAM_ID=story-123 ai-cli codex /path/to/worktree-123
+AI_WORKSTREAM_ID=story-456 ai-cli codex /path/to/worktree-456
+```
+
+The auth command uses device-code login and publishes no callback port. Each
+worker uses a distinct `CODEX_HOME` volume and a shared read-only credential
+file, so multiple workstreams can run without sharing session or SQLite state.
+
+See [the complete authentication, worker, and verification guide](docs/codex-container-auth.md).
+
 ## Project-Scoped Customization
 
 Skills, custom agents, and instructions must be present inside the project

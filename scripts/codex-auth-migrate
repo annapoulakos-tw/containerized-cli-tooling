@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_volume="${1:-codex-home}"
+auth_dir="${CODEX_AUTH_DIR:-${HOME}/.local/share/ai-cli/codex-auth}"
+auth_file="${auth_dir}/auth.json"
+
+if [[ -e "${auth_file}" ]]; then
+    printf 'Refusing to overwrite existing auth file: %s\n' "${auth_file}" >&2
+    exit 1
+fi
+
+mkdir -p "${auth_dir}"
+chmod 700 "${auth_dir}"
+
+docker run --rm \
+    --mount "type=volume,src=${source_volume},dst=/source,readonly" \
+    --mount "type=bind,src=${auth_dir},dst=/destination" \
+    alpine \
+    sh -eu -c '
+        source_file=/source/.codex/auth.json
+        test -f "${source_file}" || {
+            printf "Authentication file not found: %s\n" "${source_file}" >&2
+            exit 1
+        }
+        cp "${source_file}" /destination/auth.json
+        chmod 600 /destination/auth.json
+    '
+
+chmod 600 "${auth_file}"
+printf 'Migrated Codex authentication to: %s\n' "${auth_file}"
+printf 'The source Docker volume was not modified.\n'

@@ -36,7 +36,9 @@ assert_file_exists() {
 
 export HOME="${tmpdir}/home"
 export AI_HARNESS_ROOT="${tmpdir}/harness"
-mkdir -p "${HOME}" "${AI_HARNESS_ROOT}/build/copilot" "${AI_HARNESS_ROOT}/build/gemini" "${AI_HARNESS_ROOT}/build/rovo" "${tmpdir}/bin" "${tmpdir}/project"
+mkdir -p "${HOME}/.local/share/ai-cli/codex-auth" "${AI_HARNESS_ROOT}/build/codex" "${AI_HARNESS_ROOT}/build/copilot" "${AI_HARNESS_ROOT}/build/gemini" "${AI_HARNESS_ROOT}/build/rovo" "${tmpdir}/bin" "${tmpdir}/project"
+printf '%s\n' '{}' > "${HOME}/.local/share/ai-cli/codex-auth/auth.json"
+printf '%s\n' 'generated codex harness' > "${AI_HARNESS_ROOT}/build/codex/AGENTS.md"
 printf '%s\n' '/home/copilot/.copilot/agent-harness/BOOTSTRAP.md' > "${AI_HARNESS_ROOT}/build/copilot/AGENTS.md"
 printf '%s\n' 'generated gemini harness' > "${AI_HARNESS_ROOT}/build/gemini/AGENTS.md"
 printf '%s\n' 'generated rovo harness' > "${AI_HARNESS_ROOT}/build/rovo/AGENTS.md"
@@ -51,6 +53,28 @@ chmod +x "${AI_HARNESS_ROOT}/build.sh"
 cat > "${tmpdir}/bin/docker" <<'DOCKER_SH'
 #!/usr/bin/env bash
 set -euo pipefail
+printf '%s\n' "$*" >> "${TMPDIR}/docker-calls"
+
+if [[ "${1:-}" == "volume" && "${2:-}" == "inspect" ]]; then
+    [[ -f "${TMPDIR}/codex-volume-created" ]]
+    exit
+fi
+
+if [[ "${1:-}" == "volume" && "${2:-}" == "create" ]]; then
+    touch "${TMPDIR}/codex-volume-created"
+    exit
+fi
+
+if [[ "$*" == *"test -f /state/.ai-cli-initialized"* ]]; then
+    [[ -f "${TMPDIR}/codex-volume-initialized" ]]
+    exit
+fi
+
+if [[ "$*" == *"chown codex:codex /state"* ]]; then
+    touch "${TMPDIR}/codex-volume-initialized"
+    exit
+fi
+
 printf '%s\n' "$*" > "${TMPDIR}/docker-args"
 DOCKER_SH
 chmod +x "${tmpdir}/bin/docker"
@@ -60,6 +84,31 @@ export PATH="${tmpdir}/bin:${PATH}"
 
 # Exercise the sourceable Bash wrapper with fake docker and harness tooling.
 source "${repo_root}/shell-functions/ai-cli.sh"
+export AI_WORKSTREAM_ID='story-123'
+ai-cli codex "${tmpdir}/project"
+assert_contains "${tmpdir}/docker-args" "--name codex-story-123"
+assert_contains "${tmpdir}/docker-args" "--env CODEX_HOME=/home/codex/state"
+assert_contains "${tmpdir}/docker-args" "type=volume,src=codex-home-story-123,dst=/home/codex/state"
+assert_contains "${tmpdir}/docker-args" "dst=/home/codex/state/auth.json,readonly"
+assert_not_contains "${tmpdir}/docker-args" "127.0.0.1:1455:1455"
+assert_contains "${tmpdir}/docker-calls" "volume create codex-home-story-123"
+assert_contains "${tmpdir}/docker-calls" "--user root --mount type=volume,src=codex-home-story-123,dst=/state codex-sandbox sh -eu -c"
+assert_contains "${tmpdir}/docker-calls" "chown codex:codex /state"
+
+ai-cli codex "${tmpdir}/project"
+[[ "$(grep -c '^volume create codex-home-story-123$' "${tmpdir}/docker-calls")" -eq 1 ]] || fail "Codex volume was recreated on repeat launch"
+[[ "$(grep -Ec '^[[:space:]]*chown codex:codex /state$' "${tmpdir}/docker-calls")" -eq 1 ]] || fail "Codex volume was reinitialized on repeat launch"
+unset AI_WORKSTREAM_ID
+
+ai-cli-auth codex
+assert_contains "${tmpdir}/docker-args" "--name codex-auth"
+assert_contains "${tmpdir}/docker-args" "--env CODEX_HOME=/home/codex/auth"
+assert_contains "${tmpdir}/docker-args" "type=bind,src=${HOME}/.local/share/ai-cli/codex-auth,dst=/home/codex/auth"
+assert_contains "${tmpdir}/docker-args" "codex-sandbox codex login --device-auth"
+assert_not_contains "${tmpdir}/docker-args" "127.0.0.1:1455:1455"
+[[ "$(stat -c '%a' "${HOME}/.local/share/ai-cli/codex-auth")" == "700" ]] || fail "Codex auth directory permissions are not 700"
+[[ "$(stat -c '%a' "${HOME}/.local/share/ai-cli/codex-auth/auth.json")" == "600" ]] || fail "Codex auth file permissions are not 600"
+
 export COPILOT_GITHUB_TOKEN="fake-token-must-not-be-logged"
 ai-cli copilot "${tmpdir}/project"
 
@@ -91,7 +140,7 @@ assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'AI_HARNESS_ROOT:-${HOM
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" '"${harness_root}/build.sh" "${tool}"'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'Missing generated harness build: %s'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'old aggregate harness build'
-assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=${container_home}/.${customization_base}/agent-harness,readonly'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=${customization_root}/agent-harness,readonly'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'command=("${tool}")'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" '--env COPILOT_GITHUB_TOKEN'
 assert_not_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=/workspace/AGENTS.md'
@@ -131,6 +180,7 @@ zsh_install_output="$(
     make -C "${repo_root}" install-zsh ZSH_FUNCTION_DIR="${tmpdir}/zfunc" 2>&1
 )"
 assert_file_exists "${tmpdir}/zfunc/ai-cli"
+assert_file_exists "${tmpdir}/zfunc/ai-cli-auth"
 assert_contains "${tmpdir}/zfunc/ai-cli" 'Usage: ai-cli <codex|copilot|gemini|rovo> [project]'
 [[ "${zsh_install_output}" == *'autoload -Uz ai-cli'* ]] || fail "install-zsh output does not autoload ai-cli"
 

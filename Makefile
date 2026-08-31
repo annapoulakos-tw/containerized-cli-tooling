@@ -32,11 +32,13 @@ check-source-function:
 
 check-zsh-function:
 	@test -f "zsh-autoload-funcs/ai-cli" || { printf 'No Zsh autoload function exists for ai-cli\n' >&2; exit 2; }
+	@test -f "zsh-autoload-funcs/ai-cli-auth" || { printf 'No Zsh autoload function exists for ai-cli-auth\n' >&2; exit 2; }
 
 install-zsh: check-zsh-function ## Install the ai-cli Zsh autoload function
 	install -d "$(ZSH_FUNCTION_DIR)"
 	install -m 0644 "zsh-autoload-funcs/ai-cli" "$(ZSH_FUNCTION_DIR)/ai-cli"
-	@printf 'Installed %s\nAdd this to ~/.zshrc if needed:\n  fpath=("$(ZSH_FUNCTION_DIR)" $$fpath)\n  autoload -Uz ai-cli\n' "$(ZSH_FUNCTION_DIR)/ai-cli"
+	install -m 0644 "zsh-autoload-funcs/ai-cli-auth" "$(ZSH_FUNCTION_DIR)/ai-cli-auth"
+	@printf 'Installed ai-cli and ai-cli-auth in %s\nAdd this to ~/.zshrc if needed:\n  fpath=("$(ZSH_FUNCTION_DIR)" $$fpath)\n  autoload -Uz ai-cli ai-cli-auth\n' "$(ZSH_FUNCTION_DIR)"
 
 install-source: check-source-function ## Install the sourceable ai-cli Bash/Zsh function
 	install -d "$(SOURCE_FUNCTION_DIR)"

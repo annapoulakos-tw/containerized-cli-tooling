@@ -1,0 +1,28 @@
+emulate -L zsh
+
+if [[ "${#}" -ne 1 || "${1:-}" != "codex" ]]; then
+  printf '%s\n' 'Usage: ai-cli-auth codex' >&2
+  return 2
+fi
+
+local auth_dir="${CODEX_AUTH_DIR:-${HOME}/.local/share/ai-cli/codex-auth}"
+mkdir -p "${auth_dir}" || return
+chmod 700 "${auth_dir}" || return
+
+docker run --rm -it \
+  --name codex-auth \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --read-only \
+  --tmpfs /tmp \
+  --tmpfs /home/codex/.cache \
+  --env CODEX_HOME=/home/codex/auth \
+  --mount "type=bind,src=${auth_dir},dst=/home/codex/auth" \
+  codex-sandbox \
+  codex login --device-auth
+local status="${?}"
+
+if [[ "${status}" -eq 0 && -f "${auth_dir}/auth.json" ]]; then
+  chmod 600 "${auth_dir}/auth.json" || return
+fi
+return "${status}"

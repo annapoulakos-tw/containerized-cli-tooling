@@ -13,19 +13,31 @@ project="$(cd "${project}" && pwd)" || return
 local image="${tool}-sandbox"
 local container_home="/home/${tool}"
 local home_volume="${tool}-home"
+local state_home="${container_home}"
 local project_name
 project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
+local workstream_id=""
+if [[ "${tool}" == "codex" ]]; then
+  workstream_id="${AI_WORKSTREAM_ID:-${project_name}}"
+  workstream_id="$(printf '%s' "${workstream_id}" | tr -cd '[:alnum:]_.-')"
+  if [[ -z "${workstream_id}" ]]; then
+    printf '%s\n' 'AI_WORKSTREAM_ID must contain a letter, number, dot, underscore, or hyphen.' >&2
+    return 2
+  fi
+fi
+local container_name="${tool}-${workstream_id:-${project_name}}"
 
 local cache_tmpfs="${container_home}/.cache"
 local harness_root="${AI_HARNESS_ROOT:-${HOME}/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}"
 local harness_build="${harness_root}/build/${tool}"
 local customization_base="${tool}"
+local customization_root="${container_home}/.${tool}"
 local -a customization_directories=(agents)
 local -a post_home_mounts=()
 local -a docker_arguments=(
   --rm
   -it
-  --name "${tool}-${project_name}"
+  --name "${container_name}"
   --cap-drop ALL
   --security-opt no-new-privileges
   --read-only
@@ -35,8 +47,18 @@ local -a command=()
 
 case "${tool}" in
   codex)
-    docker_arguments+=(-p 127.0.0.1:1455:1455)
-    command=(codex --sandbox danger-full-access)
+    local auth_file="${CODEX_AUTH_DIR:-${HOME}/.local/share/ai-cli/codex-auth}/auth.json"
+    if [[ ! -s "${auth_file}" ]]; then
+      printf 'Missing Codex authentication: %s\n' "${auth_file}" >&2
+      printf '%s\n' 'Run: ai-cli-auth codex' >&2
+      return 1
+    fi
+    state_home="/home/codex/state"
+    customization_root="${state_home}"
+    home_volume="codex-home-${workstream_id}"
+    docker_arguments+=(--env CODEX_HOME="${state_home}")
+    post_home_mounts+=(--mount "type=bind,src=${auth_file},dst=${state_home}/auth.json,readonly")
+    command=(codex -c 'cli_auth_credentials_store="file"' --sandbox danger-full-access)
     ;;
   copilot|gemini)
     cache_tmpfs="${cache_tmpfs}:uid=1001,gid=1001,mode=700,exec"
@@ -75,7 +97,7 @@ if [[ -n "${cache_tmpfs}" ]]; then
 fi
 docker_arguments+=(
   --mount "type=bind,src=${project},dst=/workspace"
-  --mount "type=volume,src=${home_volume},dst=${container_home}"
+  --mount "type=volume,src=${home_volume},dst=${state_home}"
 )
 docker_arguments+=("${post_home_mounts[@]}")
 
@@ -93,7 +115,7 @@ for customization_directory in "${customization_directories[@]}"; do
   source_directory="${HOME}/.${customization_base}/${customization_directory}"
   if [[ -d "${source_directory}" ]]; then
     docker_arguments+=(
-      --mount "type=bind,src=${source_directory},dst=${container_home}/.${customization_base}/${customization_directory},readonly"
+      --mount "type=bind,src=${source_directory},dst=${customization_root}/${customization_directory},readonly"
     )
   fi
 done
@@ -109,9 +131,32 @@ if [[ ! -d "${harness_build}" ]]; then
 fi
 
 docker_arguments+=(
-  --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
+  --mount "type=bind,src=${harness_build},dst=${customization_root}/agent-harness,readonly"
 )
 
 docker_arguments+=(--workdir /workspace)
+
+if [[ "${tool}" == "codex" ]]; then
+  if ! docker volume inspect "${home_volume}" >/dev/null 2>&1; then
+    docker volume create "${home_volume}" >/dev/null || return
+  fi
+
+  if ! docker run --rm \
+    --user root \
+    --mount "type=volume,src=${home_volume},dst=/state" \
+    "${image}" \
+    sh -eu -c 'test -f /state/.ai-cli-initialized'
+  then
+    docker run --rm \
+      --user root \
+      --mount "type=volume,src=${home_volume},dst=/state" \
+      "${image}" \
+      sh -eu -c '
+        chown codex:codex /state
+        touch /state/.ai-cli-initialized
+        chown codex:codex /state/.ai-cli-initialized
+      ' || return
+  fi
+fi
 
 docker run "${docker_arguments[@]}" "${image}" "${command[@]}"

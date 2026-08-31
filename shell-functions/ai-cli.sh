@@ -19,6 +19,31 @@ ai-cli () {
     local project_name
     project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
 
+    # local workstream_id=""
+    # if [[ "${tool}" == "codex" ]]; then
+    #     workstream_id="${AI_WORKSTREAM_ID:-${project_name}}"
+    #     workstream_id="$(printf '%s' "${workstream_id}" | tr -cd '[:alnum:]_.-')"
+    #     if [[ -z "${workstream_id}" ]]; then
+    #         printf '%s\n' 'AI_WORKSTREAM_ID must contain a letter, number, dot, underscore, or hyphen.' >&2
+    #         return 2
+    #     fi
+    # fi
+
+    local workstream_id="${AI_WORKSTREAM_ID:-${project_name}}"
+    workstream_id="$(printf '%s' "${workstream_id}" | tr -cd '[:alnum:]_.-')"
+    if [[ -z "${workstream_id}" ]]; then
+        printf '%s\n' 'Container worker ID must contain a letter, number, dot, underscore, or
+        hyphen.' >&2
+        return 2
+    fi
+    local container_name="${tool}-${workstream_id}"
+
+
+
+    local state_home="${container_home}"
+    local container_name="${tool}-${workstream_id:-${project_name}}"
+    local customization_root="${container_home}/.${tool}"
+
     local customization_base="${tool}"
     local -a customization_directories=(agents)
     local -a post_home_mounts=()
@@ -31,17 +56,38 @@ ai-cli () {
     local -a docker_arguments=(
         --rm
         -it
-        --name "${tool}-${project_name}"
+        --name "${container_name}"
         --cap-drop ALL
         --security-opt no-new-privileges
         --read-only
         --tmpfs /tmp
     )
 
+    if [[ "${AI_TEAM_MANAGED:-}" == "1" ]]; then
+        docker_arguments+=(
+        --label "ai-team.managed=true"
+        --label "ai-team.worker-id=${workstream_id}"
+        --env "AI_WORKSTREAM_ID=${workstream_id}"
+        )
+    fi
+
     case "${tool}" in
         codex)
-            docker_arguments+=(-p 127.0.0.1:1455:1455)
-            command=(codex --sandbox danger-full-access)
+            local auth_file="${CODEX_AUTH_DIR:-${HOME}/.local/share/ai-cli/codex-auth}/auth.json"
+            if [[ ! -s "${auth_file}" ]]; then
+                printf 'Missing Codex authentication: %s\n' "${auth_file}" >&2
+                printf '%s\n' 'Run: ai-cli-auth codex' >&2
+                return 1
+            fi
+
+            state_home="/home/codex/state"
+            customization_root="${state_home}"
+            home_volume="codex-home-${workstream_id}"
+            docker_arguments+=(--env CODEX_HOME="${state_home}")
+            post_home_mounts+=(
+                --mount "type=bind,src=${auth_file},dst=${state_home}/auth.json,readonly"
+            )
+            command=(codex -c 'cli_auth_credentials_store="file"' --sandbox danger-full-access)
             ;;
         copilot|gemini)
             cache_tmpfs="${cache_tmpfs}:uid=1001,gid=1001,mode=700,exec"
@@ -85,7 +131,7 @@ ai-cli () {
 
     docker_arguments+=(
         --mount "type=bind,src=${project},dst=/workspace"
-        --mount "type=volume,src=${home_volume},dst=${container_home}"
+        --mount "type=volume,src=${home_volume},dst=${state_home}"
     )
 
     docker_arguments+=("${post_home_mounts[@]}")
@@ -104,7 +150,7 @@ ai-cli () {
         source_directory="${HOME}/.${customization_base}/${customization_directory}"
         if [[ -d "${source_directory}" ]]; then
             docker_arguments+=(
-                --mount "type=bind,src=${source_directory},dst=${container_home}/.${customization_base}/${customization_directory},readonly"
+                --mount "type=bind,src=${source_directory},dst=${customization_root}/${customization_directory},readonly"
             )
         fi
     done
@@ -125,10 +171,33 @@ ai-cli () {
     # This intentionally does NOT mount over /workspace/AGENTS.md.
     # Project-level AGENTS.md remains owned by the project.
     docker_arguments+=(
-        --mount "type=bind,src=${harness_build},dst=${container_home}/.${customization_base}/agent-harness,readonly"
+        --mount "type=bind,src=${harness_build},dst=${customization_root}/agent-harness,readonly"
     )
 
     docker_arguments+=(--workdir /workspace)
+
+    if [[ "${tool}" == "codex" ]]; then
+        if ! docker volume inspect "${home_volume}" >/dev/null 2>&1; then
+            docker volume create "${home_volume}" >/dev/null || return
+        fi
+
+        if ! docker run --rm \
+            --user root \
+            --mount "type=volume,src=${home_volume},dst=/state" \
+            "${image}" \
+            sh -eu -c 'test -f /state/.ai-cli-initialized'
+        then
+            docker run --rm \
+                --user root \
+                --mount "type=volume,src=${home_volume},dst=/state" \
+                "${image}" \
+                sh -eu -c '
+                    chown codex:codex /state
+                    touch /state/.ai-cli-initialized
+                    chown codex:codex /state/.ai-cli-initialized
+                ' || return
+        fi
+    fi
 
     if [[ -n "${AI_CLI_DEBUG:-}" ]]; then
         printf 'Docker Args: %s\n' "${docker_arguments[*]}"
@@ -137,4 +206,37 @@ ai-cli () {
     fi
 
     docker run "${docker_arguments[@]}" "${image}" "${command[@]}"
+}
+
+ai-cli-auth () {
+    if [[ -n "${ZSH_VERSION:-}" ]]; then
+        emulate -L zsh
+    fi
+
+    if [[ "${#}" -ne 1 || "${1:-}" != "codex" ]]; then
+        printf '%s\n' 'Usage: ai-cli-auth codex' >&2
+        return 2
+    fi
+
+    local auth_dir="${CODEX_AUTH_DIR:-${HOME}/.local/share/ai-cli/codex-auth}"
+    mkdir -p "${auth_dir}" || return
+    chmod 700 "${auth_dir}" || return
+
+    docker run --rm -it \
+        --name codex-auth \
+        --cap-drop ALL \
+        --security-opt no-new-privileges \
+        --read-only \
+        --tmpfs /tmp \
+        --tmpfs /home/codex/.cache \
+        --env CODEX_HOME=/home/codex/auth \
+        --mount "type=bind,src=${auth_dir},dst=/home/codex/auth" \
+        codex-sandbox \
+        codex login --device-auth
+    local status="${?}"
+
+    if [[ "${status}" -eq 0 && -f "${auth_dir}/auth.json" ]]; then
+        chmod 600 "${auth_dir}/auth.json" || return
+    fi
+    return "${status}"
 }

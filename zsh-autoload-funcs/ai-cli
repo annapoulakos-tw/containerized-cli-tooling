@@ -16,16 +16,13 @@ local home_volume="${tool}-home"
 local state_home="${container_home}"
 local project_name
 project_name="$(basename "${project}" | tr -cd '[:alnum:]-_')"
-local workstream_id=""
-if [[ "${tool}" == "codex" ]]; then
-  workstream_id="${AI_WORKSTREAM_ID:-${project_name}}"
-  workstream_id="$(printf '%s' "${workstream_id}" | tr -cd '[:alnum:]_.-')"
-  if [[ -z "${workstream_id}" ]]; then
-    printf '%s\n' 'AI_WORKSTREAM_ID must contain a letter, number, dot, underscore, or hyphen.' >&2
-    return 2
-  fi
+local workstream_id="${AI_WORKSTREAM_ID:-${project_name}}"
+workstream_id="$(printf '%s' "${workstream_id}" | tr -cd '[:alnum:]_.-')"
+if [[ -z "${workstream_id}" ]]; then
+  printf '%s\n' 'Container worker ID must contain a letter, number, dot, underscore, or hyphen.' >&2
+  return 2
 fi
-local container_name="${tool}-${workstream_id:-${project_name}}"
+local container_name="${tool}-${workstream_id}"
 
 local cache_tmpfs="${container_home}/.cache"
 local harness_root="${AI_HARNESS_ROOT:-${HOME}/github.com/annapoulakos-tw/containerized-cli-tooling/agentic-harness}"
@@ -44,6 +41,14 @@ local -a docker_arguments=(
   --tmpfs /tmp
 )
 local -a command=()
+
+if [[ "${AI_TEAM_MANAGED:-}" == "1" ]]; then
+  docker_arguments+=(
+    --label "ai-team.managed=true"
+    --label "ai-team.worker-id=${workstream_id}"
+    --env "AI_WORKSTREAM_ID=${workstream_id}"
+  )
+fi
 
 case "${tool}" in
   codex)

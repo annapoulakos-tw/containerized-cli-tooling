@@ -97,6 +97,64 @@ if [[ -n "${cache_tmpfs}" ]]; then
 fi
 docker_arguments+=(
   --mount "type=bind,src=${project},dst=/workspace"
+)
+
+if [[ "${AI_TEAM_MANAGED:-}" == "1" && ( "${tool}" == "codex" || "${tool}" == "copilot" ) ]]; then
+  local template_path
+  local template_parent
+  local template_name
+  local canonical_parent
+
+  template_path="${AI_TEAM_PROJECT_TEMPLATE_PATH:-}"
+  if [[ -n "${template_path}" ]]; then
+    if [[ "${template_path}" != /* ]]; then
+      printf '%s\n' 'AI_TEAM_PROJECT_TEMPLATE_PATH must be an absolute path to a readable regular file.' >&2
+      return 2
+    fi
+    if [[ -L "${template_path}" || ! -f "${template_path}" || ! -r "${template_path}" ]]; then
+      printf 'Invalid AI_TEAM_PROJECT_TEMPLATE_PATH: %s (expected a readable regular file, not a symlink).\n' "${template_path}" >&2
+      return 2
+    fi
+    template_parent="${template_path%/*}"
+    [[ -n "${template_parent}" ]] || template_parent="/"
+    template_name="${template_path##*/}"
+    canonical_parent="$(cd -P -- "${template_parent}" && pwd)" || {
+      printf 'Invalid AI_TEAM_PROJECT_TEMPLATE_PATH parent directory: %s\n' "${template_parent}" >&2
+      return 2
+    }
+    template_path="${canonical_parent%/}/${template_name}"
+    docker_arguments+=(
+      --mount "type=bind,src=${template_path},dst=/workspace/PROJECT.md,readonly"
+    )
+  fi
+
+  if [[ "${tool}" == "copilot" ]]; then
+    template_path="${AI_TEAM_COPILOT_INSTRUCTIONS_PATH:-}"
+    if [[ -n "${template_path}" ]]; then
+      if [[ "${template_path}" != /* ]]; then
+        printf '%s\n' 'AI_TEAM_COPILOT_INSTRUCTIONS_PATH must be an absolute path to a readable regular file.' >&2
+        return 2
+      fi
+      if [[ -L "${template_path}" || ! -f "${template_path}" || ! -r "${template_path}" ]]; then
+        printf 'Invalid AI_TEAM_COPILOT_INSTRUCTIONS_PATH: %s (expected a readable regular file, not a symlink).\n' "${template_path}" >&2
+        return 2
+      fi
+      template_parent="${template_path%/*}"
+      [[ -n "${template_parent}" ]] || template_parent="/"
+      template_name="${template_path##*/}"
+      canonical_parent="$(cd -P -- "${template_parent}" && pwd)" || {
+        printf 'Invalid AI_TEAM_COPILOT_INSTRUCTIONS_PATH parent directory: %s\n' "${template_parent}" >&2
+        return 2
+      }
+      template_path="${canonical_parent%/}/${template_name}"
+      docker_arguments+=(
+        --mount "type=bind,src=${template_path},dst=/workspace/.github/copilot-instructions.md,readonly"
+      )
+    fi
+  fi
+fi
+
+docker_arguments+=(
   --mount "type=volume,src=${home_volume},dst=${state_home}"
 )
 docker_arguments+=("${post_home_mounts[@]}")
@@ -127,6 +185,13 @@ fi
 if [[ ! -d "${harness_build}" ]]; then
   printf 'Missing generated harness build: %s\n' "${harness_build}" >&2
   printf 'Set AI_HARNESS_ROOT to the agentic-harness checkout or run its build.sh first.\n' >&2
+  return 1
+fi
+
+if [[ "${tool}" == "copilot" && -f "${harness_build}/AGENTS.md" ]] &&
+  grep -F '# Agentic Harness' "${harness_build}/AGENTS.md" >/dev/null 2>&1
+then
+  printf 'Refusing old aggregate harness build: %s\n' "${harness_build}/AGENTS.md" >&2
   return 1
 fi
 

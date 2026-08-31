@@ -82,6 +82,12 @@ chmod +x "${tmpdir}/bin/docker"
 export TMPDIR="${tmpdir}"
 export PATH="${tmpdir}/bin:${PATH}"
 
+mkdir -p "${tmpdir}/templates/copilot/.github"
+printf '%s\n' '# Managed project instructions' > "${tmpdir}/templates/PROJECT.md"
+printf '%s\n' '# Managed Copilot instructions' > "${tmpdir}/templates/copilot/.github/copilot-instructions.md"
+export AI_TEAM_PROJECT_TEMPLATE_PATH="${tmpdir}/templates/PROJECT.md"
+export AI_TEAM_COPILOT_INSTRUCTIONS_PATH="${tmpdir}/templates/copilot/.github/copilot-instructions.md"
+
 # Exercise the sourceable Bash wrapper with fake docker and harness tooling.
 source "${repo_root}/shell-functions/ai-cli.sh"
 export AI_WORKSTREAM_ID='story-123'
@@ -94,6 +100,8 @@ assert_not_contains "${tmpdir}/docker-args" "127.0.0.1:1455:1455"
 assert_contains "${tmpdir}/docker-calls" "volume create codex-home-story-123"
 assert_contains "${tmpdir}/docker-calls" "--user root --mount type=volume,src=codex-home-story-123,dst=/state codex-sandbox sh -eu -c"
 assert_contains "${tmpdir}/docker-calls" "chown codex:codex /state"
+assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/PROJECT.md"
+assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/.github/copilot-instructions.md"
 
 ai-cli codex "${tmpdir}/project"
 [[ "$(grep -c '^volume create codex-home-story-123$' "${tmpdir}/docker-calls")" -eq 1 ]] || fail "Codex volume was recreated on repeat launch"
@@ -118,6 +126,62 @@ assert_not_contains "${tmpdir}/docker-args" "fake-token-must-not-be-logged"
 assert_contains "${tmpdir}/docker-args" "type=bind,src=${AI_HARNESS_ROOT}/build/copilot,dst=/home/copilot/.copilot/agent-harness,readonly"
 assert_contains "${tmpdir}/docker-args" "copilot-sandbox copilot"
 assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/AGENTS.md"
+assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/PROJECT.md"
+assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/.github/copilot-instructions.md"
+
+export AI_TEAM_MANAGED=1
+ai-cli copilot "${tmpdir}/project"
+assert_contains "${tmpdir}/docker-args" "type=bind,src=${tmpdir}/templates/PROJECT.md,dst=/workspace/PROJECT.md,readonly"
+assert_contains "${tmpdir}/docker-args" "type=bind,src=${tmpdir}/templates/copilot/.github/copilot-instructions.md,dst=/workspace/.github/copilot-instructions.md,readonly"
+assert_not_contains "${tmpdir}/docker-args" "--env AI_TEAM_PROJECT_TEMPLATE_PATH"
+assert_not_contains "${tmpdir}/docker-args" "--env AI_TEAM_COPILOT_INSTRUCTIONS_PATH"
+
+export AI_TEAM_COPILOT_INSTRUCTIONS_PATH="${tmpdir}/templates/missing-copilot-instructions.md"
+ai-cli codex "${tmpdir}/project"
+assert_contains "${tmpdir}/docker-args" "type=bind,src=${tmpdir}/templates/PROJECT.md,dst=/workspace/PROJECT.md,readonly"
+assert_not_contains "${tmpdir}/docker-args" "dst=/workspace/.github/copilot-instructions.md"
+export AI_TEAM_COPILOT_INSTRUCTIONS_PATH="${tmpdir}/templates/copilot/.github/copilot-instructions.md"
+
+assert_invalid_template() {
+    local variable_name="${1}"
+    local invalid_path="${2}"
+    local error_file="${tmpdir}/${variable_name}.err"
+    local calls_before
+    local calls_after
+
+    calls_before="$(wc -l < "${tmpdir}/docker-calls")"
+    export "${variable_name}=${invalid_path}"
+    if ai-cli copilot "${tmpdir}/project" 2>"${error_file}"; then
+        fail "copilot wrapper accepted invalid ${variable_name}: ${invalid_path}"
+    fi
+    calls_after="$(wc -l < "${tmpdir}/docker-calls")"
+    [[ "${calls_before}" -eq "${calls_after}" ]] || fail "Docker was called for invalid ${variable_name}: ${invalid_path}"
+    assert_contains "${error_file}" "${variable_name}"
+}
+
+mkdir -p "${tmpdir}/invalid-template-directory"
+ln -s "${tmpdir}/templates/PROJECT.md" "${tmpdir}/template-symlink"
+assert_invalid_template AI_TEAM_PROJECT_TEMPLATE_PATH "relative/PROJECT.md"
+assert_invalid_template AI_TEAM_PROJECT_TEMPLATE_PATH "${tmpdir}/missing-template.md"
+assert_invalid_template AI_TEAM_PROJECT_TEMPLATE_PATH "${tmpdir}/invalid-template-directory"
+assert_invalid_template AI_TEAM_PROJECT_TEMPLATE_PATH "${tmpdir}/template-symlink"
+
+export AI_TEAM_PROJECT_TEMPLATE_PATH="${tmpdir}/templates/PROJECT.md"
+assert_invalid_template AI_TEAM_COPILOT_INSTRUCTIONS_PATH "relative/copilot-instructions.md"
+assert_invalid_template AI_TEAM_COPILOT_INSTRUCTIONS_PATH "${tmpdir}/missing-copilot-instructions.md"
+assert_invalid_template AI_TEAM_COPILOT_INSTRUCTIONS_PATH "${tmpdir}/invalid-template-directory"
+assert_invalid_template AI_TEAM_COPILOT_INSTRUCTIONS_PATH "${tmpdir}/template-symlink"
+
+if [[ "$(id -u)" -ne 0 ]]; then
+    printf '%s\n' '# Unreadable template' > "${tmpdir}/unreadable-template.md"
+    chmod 000 "${tmpdir}/unreadable-template.md"
+    assert_invalid_template AI_TEAM_PROJECT_TEMPLATE_PATH "${tmpdir}/unreadable-template.md"
+    chmod 600 "${tmpdir}/unreadable-template.md"
+fi
+
+export AI_TEAM_PROJECT_TEMPLATE_PATH="${tmpdir}/templates/PROJECT.md"
+export AI_TEAM_COPILOT_INSTRUCTIONS_PATH="${tmpdir}/templates/copilot/.github/copilot-instructions.md"
+unset AI_TEAM_MANAGED
 
 unset COPILOT_GITHUB_TOKEN
 ai-cli copilot "${tmpdir}/project"
@@ -143,7 +207,18 @@ assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'old aggregate harness 
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=${customization_root}/agent-harness,readonly'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'command=("${tool}")'
 assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" '--env COPILOT_GITHUB_TOKEN'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" '"${AI_TEAM_MANAGED:-}" == "1"'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'AI_TEAM_PROJECT_TEMPLATE_PATH must be an absolute path'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'AI_TEAM_COPILOT_INSTRUCTIONS_PATH must be an absolute path'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=/workspace/PROJECT.md,readonly'
+assert_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=/workspace/.github/copilot-instructions.md,readonly'
 assert_not_contains "${repo_root}/zsh-autoload-funcs/ai-cli" 'dst=/workspace/AGENTS.md'
+
+assert_contains "${repo_root}/shell-functions/ai-cli.sh" '"${AI_TEAM_MANAGED:-}" == "1"'
+assert_contains "${repo_root}/shell-functions/ai-cli.sh" 'AI_TEAM_PROJECT_TEMPLATE_PATH must be an absolute path'
+assert_contains "${repo_root}/shell-functions/ai-cli.sh" 'AI_TEAM_COPILOT_INSTRUCTIONS_PATH must be an absolute path'
+assert_contains "${repo_root}/shell-functions/ai-cli.sh" 'dst=/workspace/PROJECT.md,readonly'
+assert_contains "${repo_root}/shell-functions/ai-cli.sh" 'dst=/workspace/.github/copilot-instructions.md,readonly'
 
 chmod -x "${AI_HARNESS_ROOT}/build.sh"
 rm -rf "${AI_HARNESS_ROOT}/build/copilot"

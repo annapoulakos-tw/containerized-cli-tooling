@@ -152,7 +152,7 @@ ai-cli () {
             template_parent="${template_path%/*}"
             [[ -n "${template_parent}" ]] || template_parent="/"
             template_name="${template_path##*/}"
-            canonical_parent="$(cd -P -- "${template_parent}" && pwd)" || {
+            canonical_parent="$(builtin cd -P -- "${template_parent}" && builtin pwd)" || {
                 printf 'Invalid AI_TEAM_PROJECT_TEMPLATE_PATH parent directory: %s\n' "${template_parent}" >&2
                 return 2
             }
@@ -176,7 +176,7 @@ ai-cli () {
                 template_parent="${template_path%/*}"
                 [[ -n "${template_parent}" ]] || template_parent="/"
                 template_name="${template_path##*/}"
-                canonical_parent="$(cd -P -- "${template_parent}" && pwd)" || {
+                canonical_parent="$(builtin cd -P -- "${template_parent}" && builtin pwd)" || {
                     printf 'Invalid AI_TEAM_COPILOT_INSTRUCTIONS_PATH parent directory: %s\n' "${template_parent}" >&2
                     return 2
                 }
